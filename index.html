@@ -131,6 +131,17 @@
   #breadPreview{font-size:15px; font-weight:700; margin:4px 0 2px; word-break:break-word;}
   .hint{font-size:12.5px; color:#b8977a; margin-top:10px;}
 
+  /* ---------- crumpled paper (bin history) ---------- */
+  .card.paper{border:3px dashed #cbb391; transform:rotate(-1.5deg);
+    background:repeating-linear-gradient(0deg, transparent 0 26px, rgba(180,150,110,.13) 26px 27.5px), #fffdf7;}
+  #histCount{font-size:15px; font-weight:700; color:var(--brown);}
+  #historyList{list-style:none; text-align:left; max-height:220px; overflow-y:auto;
+    margin:10px 0 4px; padding:0 4px;}
+  #historyList li{font-size:13.5px; font-weight:700; color:var(--brown); padding:5px 8px;
+    border-bottom:1.5px dashed #e5d2bb; word-break:break-word;}
+  #historyList li::before{content:'🍞 ';}
+  #histEmpty{font-size:13px; color:#b8977a; margin:12px 0;}
+
   /* ---------- music panel ---------- */
   #musicPanel{position:fixed; top:70px; right:22px; z-index:9; width:300px; display:none;}
   #musicPanel.open{display:block;}
@@ -149,6 +160,39 @@
   @keyframes floatup{to{transform:translateY(-50px); opacity:0}}
 
   .deco{position:absolute; font-size:22px; opacity:.6; z-index:1;}
+
+  /* ---------- pomodoro clock ---------- */
+  #pomo{position:absolute; top:4%; left:calc(50% + 190px); width:150px; z-index:4; text-align:center;}
+  #pomoPad.ringing{animation:ringring .16s infinite;}
+  #pomoLabel{font-size:12px; font-weight:700; color:var(--pink-dark); margin-bottom:3px;}
+  #pomoTime{font-size:25px; font-weight:700; color:var(--brown); background:#fff;
+    border:3px solid var(--mint); border-radius:14px; padding:0 14px; display:inline-block;
+    line-height:1.35; margin-bottom:7px;}
+  @keyframes ringring{0%,100%{transform:rotate(0)} 25%{transform:rotate(-7deg)} 75%{transform:rotate(7deg)}}
+  #pomoPad{margin-top:4px; background:var(--cream); border:3px solid var(--pink-dark);
+    border-radius:18px; padding:8px 8px 10px; box-shadow:0 5px 0 rgba(120,90,70,.25);}
+  .modeRow{display:flex; gap:6px; justify-content:center;}
+  .mode{font-family:inherit; font-weight:700; font-size:11px; border-radius:12px;
+    border:2.5px solid var(--mint-dark); background:#fff; color:var(--brown);
+    padding:4px 7px; cursor:pointer; transition:transform .12s;}
+  .mode:hover{transform:scale(1.08);}
+  .mode.active{background:var(--pink); border-color:var(--pink-dark); color:#fff;}
+  .ctrlRow{display:flex; gap:10px; justify-content:center; margin-top:8px;}
+  .ctrl{width:34px; height:34px; border-radius:50%; border:3px solid var(--mint-dark);
+    background:var(--mint); color:var(--brown); font-size:14px; cursor:pointer;
+    box-shadow:0 3px 0 var(--mint-dark); font-family:inherit;}
+  .ctrl:active{transform:scale(.9);}
+  #pomoState{font-size:11px; color:#b8977a; margin-top:6px; font-weight:700;}
+
+  @media (max-width: 760px){
+    #pomo{left:auto; right:8px; top:8%; width:106px;}
+    #pomoLabel{font-size:9px; margin-bottom:2px;}
+    #pomoTime{font-size:15px; border-width:2px; padding:0 8px; margin-bottom:4px;}
+    #pomoPad{padding:6px 4px 7px; border-width:2.5px; border-radius:14px;}
+    .mode{font-size:9px; padding:3px 4px; border-width:2px;}
+    .ctrl{width:26px; height:26px; font-size:11px; border-width:2.5px;}
+    #pomoState{font-size:9px; margin-top:4px;}
+  }
 
   /* ---------- mobile / narrow screens ---------- */
   @media (max-width: 760px){
@@ -196,6 +240,25 @@
     <ellipse cx="50" cy="158" rx="6" ry="4" fill="#f5aeb6" opacity=".75"/>
     <ellipse cx="102" cy="158" rx="6" ry="4" fill="#f5aeb6" opacity=".75"/>
   </svg>
+
+  <!-- pomodoro timer -->
+  <div id="pomo">
+    <div id="pomoPad">
+      <div id="pomoLabel">⏰ pomo timer</div>
+      <div id="pomoTime">25:00</div>
+      <div class="modeRow">
+        <button class="mode active" data-secs="1500" data-label="focus time 🍅">🍅 25</button>
+        <button class="mode" data-secs="300" data-label="little rest ☕">☕ 5</button>
+        <button class="mode" data-secs="600" data-label="long break 🌙">🌙 10</button>
+      </div>
+      <div class="ctrlRow">
+        <button class="ctrl" id="pomoPlay" title="start">▶</button>
+        <button class="ctrl" id="pomoPause" title="pause">⏸</button>
+        <button class="ctrl" id="pomoReset" title="reset">↺</button>
+      </div>
+      <div id="pomoState">ready to focus ♡</div>
+    </div>
+  </div>
 
   <span class="deco" style="top:12%; left:12%">🌸</span>
   <span class="deco" style="top:26%; left:22%">💛</span>
@@ -250,8 +313,8 @@
       <input type="text" id="ytUrl" placeholder="paste a YouTube link…">
       <div class="row">
         <button class="btn mint" id="playMusic">▶ play</button>
-        <button class="btn ghost preset" data-id="jfKfPfyJRdk">lofi girl ☕</button>
-        <button class="btn ghost preset" data-id="4xDzrJKXOOY">jazz café 🥐</button>
+        <button class="btn ghost preset" data-id="X4VbdwhkE10">lofi girl ☕</button>
+        <button class="btn ghost preset" data-id="EdxpEYl-wu4">jazz café 🥐</button>
       </div>
       <div class="hint">plays in a mini player, bottom right</div>
     </div>
@@ -274,6 +337,22 @@
   </div>
 </div>
 
+<!-- bin history modal -->
+<div class="overlay" id="binModal">
+  <div class="card paper">
+    <div class="titlebar">the crumb bin 🗑 <span class="dots"><span></span><span></span></span></div>
+    <div class="body">
+      <div id="histCount"></div>
+      <div id="histEmpty">nothing toasted yet… get baking! 🍞</div>
+      <ul id="historyList"></ul>
+      <div class="row">
+        <button class="btn ghost" id="binClear">empty the bin 🧹</button>
+        <button class="btn mint" id="binClose">okay ♡</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- bread click modal -->
 <div class="overlay" id="breadModal">
   <div class="card">
@@ -291,17 +370,19 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let tasks = [], toastedCount = 0, current = null;
+let tasks = [], toastedCount = 0, history = [], current = null;
 
 // ---- persistence (safe if storage unavailable) ----
 try {
   tasks = JSON.parse(localStorage.getItem('toast.tasks') || '[]');
   toastedCount = +(localStorage.getItem('toast.count') || 0);
+  history = JSON.parse(localStorage.getItem('toast.history') || '[]');
 } catch(e) {}
 function save(){
   try {
     localStorage.setItem('toast.tasks', JSON.stringify(tasks));
     localStorage.setItem('toast.count', toastedCount);
+    localStorage.setItem('toast.history', JSON.stringify(history));
   } catch(e) {}
 }
 
@@ -375,11 +456,11 @@ function runToast({t, el}){
   setTimeout(() => {
     toaster.classList.remove('toasting');
     $('#toasterLabel').classList.remove('show');
-    popToast();
+    popToast(t.text);
   }, 700 + 3000);
 }
 
-function popToast(){
+function popToast(text){
   const tr = $('#toaster').getBoundingClientRect();
   const br = $('#bin').getBoundingClientRect();
   const mini = document.createElement('div');
@@ -403,6 +484,8 @@ function popToast(){
     mini.remove();
     $('#bin').classList.remove('wobble');
     toastedCount++;
+    history.unshift(text);
+    if(history.length > 300) history.length = 300;
     save();
     $('#binCount').textContent = toastedCount;
     const p = document.createElement('div');
@@ -415,9 +498,32 @@ function popToast(){
   }, 1150);
 }
 
+// ---- bin history ----
+$('#bin').style.cursor = 'pointer';
+function renderHistory(){
+  const n = toastedCount;
+  $('#histCount').textContent = `you've toasted ${n} task${n === 1 ? '' : 's'} ♡`;
+  const ul = $('#historyList');
+  ul.innerHTML = '';
+  history.forEach(h => {
+    const li = document.createElement('li');
+    li.textContent = h;
+    ul.appendChild(li);
+  });
+  $('#histEmpty').style.display = history.length ? 'none' : 'block';
+}
+$('#bin').onclick = () => { renderHistory(); $('#binModal').classList.add('open'); };
+$('#binClose').onclick = () => $('#binModal').classList.remove('open');
+$('#binClear').onclick = () => {
+  history = []; toastedCount = 0; save();
+  $('#binCount').textContent = 0;
+  renderHistory();
+};
+
 // ---- music ----
 $('#musicBtn').onclick = () => $('#musicPanel').classList.toggle('open');
 $('#playMusic').onclick = () => playYt($('#ytUrl').value);
+$('#ytUrl').addEventListener('keydown', e => { if(e.key === 'Enter') playYt($('#ytUrl').value); });
 document.querySelectorAll('.preset').forEach(b => b.onclick = () => playYt(b.dataset.id));
 function playYt(input){
   input = (input || '').trim();
@@ -434,6 +540,75 @@ $('#stopMusic').onclick = () => {
   $('#playerWrap').classList.remove('on');
   $('#stopMusic').classList.remove('on');
 };
+
+// ---- pomodoro ----
+let pomoSecs = 1500, pomoLeft = 1500, pomoTimer = null;
+const fmt = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+function pomoRender(){ $('#pomoTime').textContent = fmt(pomoLeft); }
+
+document.querySelectorAll('.mode').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.mode').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  pomoSecs = +b.dataset.secs;
+  stopPomo();
+  pomoLeft = pomoSecs;
+  pomoRender();
+  $('#pomoState').textContent = b.dataset.label;
+  document.title = 'toast 🍞 — cute little tasks';
+});
+
+$('#pomoPlay').onclick = startPomo;
+$('#pomoPause').onclick = pausePomo;
+$('#pomoReset').onclick = () => {
+  stopPomo(); pomoLeft = pomoSecs; pomoRender();
+  $('#pomoState').textContent = 'ready to focus ♡';
+  document.title = 'toast 🍞 — cute little tasks';
+};
+
+function startPomo(){
+  if(pomoTimer) return;
+  pomoTimer = setInterval(() => {
+    pomoLeft--;
+    pomoRender();
+    document.title = fmt(pomoLeft) + ' 🍞 toast';
+    if(pomoLeft <= 0) finishPomo();
+  }, 1000);
+  $('#pomoState').textContent = 'tick tock… ♪';
+}
+function pausePomo(){
+  if(!pomoTimer) return;
+  clearInterval(pomoTimer); pomoTimer = null;
+  $('#pomoState').textContent = 'paused 💤';
+}
+function stopPomo(){
+  clearInterval(pomoTimer); pomoTimer = null;
+}
+function finishPomo(){
+  stopPomo();
+  pomoLeft = pomoSecs;
+  pomoRender();
+  document.title = "time's up! 🍞";
+  $('#pomoState').textContent = "ding ding! time's up ♡";
+  $('#pomoPad').classList.add('ringing');
+  ding();
+  setTimeout(() => $('#pomoPad').classList.remove('ringing'), 2400);
+}
+function ding(){
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    for(let i = 0; i < 3; i++){
+      const t = ac.currentTime + i * 0.4;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'triangle'; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t); o.stop(t + 0.4);
+    }
+  } catch(e) {}
+}
+pomoRender();
 
 render();
 </script>
