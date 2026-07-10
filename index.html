@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>toast 🍞 — cute little tasks</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall:#fdf3e7; --wood:#f3d9b1; --wood-dark:#dcb888;
+    --pink:#f6c6cf; --pink-dark:#e79aa9; --mint:#bfe3d2; --mint-dark:#8cc9ae;
+    --cream:#fff8ec; --brown:#7a5a44; --bread:#f5d9a2; --crust:#c99b62;
+    --toastc:#d9a05e; --sky:#cdeaf7;
+  }
+  *{box-sizing:border-box; margin:0; -webkit-tap-highlight-color:transparent;}
+  body{font-family:'Baloo 2', 'Comic Sans MS', cursive; overflow:hidden; background:var(--wall); color:var(--brown);}
+
+  /* ---------- scene ---------- */
+  #scene{position:fixed; inset:0;}
+  #wall{position:absolute; inset:0; bottom:44%;
+    background:var(--wall);
+    background-image:radial-gradient(#f6e2cc 8%, transparent 9%);
+    background-size:46px 46px;}
+  #counter{position:absolute; left:0; right:0; bottom:0; height:44%;
+    background:repeating-linear-gradient(90deg, var(--wood) 0 120px, #eccf9f 120px 240px);
+    border-top:6px solid var(--wood-dark);}
+  #counter::before{content:''; position:absolute; top:-14px; left:0; right:0; height:10px;
+    background:var(--cream); border-radius:6px; border:3px solid var(--wood-dark);}
+
+  h1{position:fixed; top:16px; left:24px; font-size:34px; color:var(--pink-dark);
+    text-shadow:2px 2px 0 #fff; letter-spacing:1px; z-index:5;}
+  h1 small{font-size:14px; color:var(--brown); display:block; margin-top:-8px; font-weight:500;}
+
+  /* ---------- window ---------- */
+  #window{position:absolute; top:5%; left:50%; transform:translateX(-50%); width:min(330px,40vw);}
+
+  /* ---------- toaster ---------- */
+  #toaster{position:absolute; bottom:calc(44% - 4px); left:44px; width:200px; z-index:3;
+    transition:filter .3s;}
+  #toaster.toasting{animation:shake .28s infinite; filter:drop-shadow(0 0 18px #ffb347);}
+  @keyframes shake{
+    0%,100%{transform:translate(0,0) rotate(0)}
+    25%{transform:translate(-2px,1px) rotate(-1.4deg)}
+    75%{transform:translate(2px,-1px) rotate(1.4deg)}
+  }
+  #toasterLabel{position:absolute; bottom:calc(44% + 158px); left:70px; z-index:3;
+    background:#fff; border:2px solid var(--pink-dark); color:var(--pink-dark);
+    border-radius:14px; padding:2px 12px; font-size:13px; opacity:0; transition:opacity .3s;}
+  #toasterLabel.show{opacity:1;}
+
+  /* ---------- bin ---------- */
+  #bin{position:absolute; bottom:calc(44% - 4px); right:40px; width:130px; z-index:3;}
+  #bin.wobble{animation:wobble .5s;}
+  @keyframes wobble{
+    0%,100%{transform:rotate(0)} 30%{transform:rotate(-6deg)} 60%{transform:rotate(5deg)}
+  }
+  #binBadge{position:absolute; bottom:calc(44% + 128px); right:52px; z-index:3;
+    background:#fff; border:2px solid var(--mint-dark); border-radius:14px;
+    padding:2px 10px; font-size:12px; color:var(--brown);}
+
+  /* ---------- bread slices ---------- */
+  #breads{position:absolute; left:270px; right:200px; top:52%; bottom:26px; z-index:2;
+    display:flex; flex-wrap:wrap; gap:20px; align-content:flex-start; overflow-y:auto; padding:6px;}
+  #empty{position:absolute; left:0; right:0; top:60%; text-align:center; color:#b8977a;
+    font-size:16px; z-index:1; pointer-events:none;}
+
+  .bread{position:relative; width:134px; height:120px; flex:0 0 auto; cursor:pointer;
+    background:var(--bread); border:3px solid var(--crust);
+    border-radius:48% 48% 22% 22% / 42% 42% 16% 16%;
+    box-shadow:0 6px 0 rgba(160,120,80,.25);
+    animation:popin .35s cubic-bezier(.3,1.6,.6,1); transition:transform .15s;}
+  .bread:hover{transform:translateY(-5px) rotate(-2deg);}
+  .bread .inner{position:absolute; inset:9px; background:var(--cream);
+    border-radius:48% 48% 22% 22% / 42% 42% 16% 16%; pointer-events:none;}
+  .bread.toasted{background:var(--toastc); border-color:#9a6b3c;}
+  .bread.toasted .inner{background:#eec089;}
+  @keyframes popin{from{transform:scale(0) rotate(-10deg)} to{transform:scale(1) rotate(0)}}
+
+  .btext{position:absolute; top:16px; left:16px; right:16px; height:52px; z-index:1;
+    font-size:12.5px; line-height:1.25; font-weight:700; color:var(--brown); text-align:center;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+    pointer-events:none;}
+  .eye{position:absolute; width:7px; height:7px; border-radius:50%; background:#6b4b3e; top:74%;}
+  .eye.l{left:36%} .eye.r{right:36%}
+  .cheek{position:absolute; width:13px; height:8px; border-radius:50%; background:#f5aeb6; opacity:.75; top:79%;}
+  .cheek.l{left:20%} .cheek.r{right:20%}
+  .smile{position:absolute; width:16px; height:9px; left:50%; transform:translateX(-50%); top:78%;
+    border-bottom:2.5px solid #6b4b3e; border-radius:0 0 14px 14px;}
+
+  /* ---------- buttons ---------- */
+  .btn{font-family:inherit; font-weight:700; border:none; cursor:pointer; border-radius:24px;
+    transition:transform .12s;}
+  .btn:hover{transform:scale(1.06);}
+  .btn:active{transform:scale(.95);}
+  #newTaskBtn{position:fixed; bottom:22px; left:22px; z-index:6; font-size:17px;
+    padding:12px 24px; background:var(--pink); color:#fff; border:3px solid var(--pink-dark);
+    box-shadow:0 5px 0 var(--pink-dark);}
+  #musicBtn{position:fixed; top:20px; right:22px; z-index:6; font-size:16px;
+    padding:9px 18px; background:var(--mint); color:var(--brown); border:3px solid var(--mint-dark);
+    box-shadow:0 4px 0 var(--mint-dark);}
+
+  /* ---------- modals ---------- */
+  .overlay{position:fixed; inset:0; background:rgba(120,90,70,.35); z-index:10;
+    display:none; align-items:center; justify-content:center;}
+  .overlay.open{display:flex;}
+  .card{background:var(--cream); border:4px solid var(--mint-dark); border-radius:22px;
+    width:min(360px,90vw); padding:0 0 20px; box-shadow:0 10px 0 rgba(120,90,70,.25);
+    animation:popin .3s cubic-bezier(.3,1.6,.6,1); text-align:center;}
+  .card .titlebar{background:var(--mint); border-radius:16px 16px 0 0; padding:9px 16px;
+    font-weight:700; color:#5b7d6b; font-size:17px; border-bottom:3px solid var(--mint-dark);
+    display:flex; justify-content:space-between; align-items:center;}
+  .card .titlebar .dots span{display:inline-block; width:10px; height:10px; border-radius:50%;
+    margin-left:5px; background:#fff; border:2px solid var(--mint-dark);}
+  .card .body{padding:18px 20px 4px;}
+  .card.pink{border-color:var(--pink-dark);}
+  .card.pink .titlebar{background:var(--pink); border-color:var(--pink-dark); color:#a95f6e;}
+  .card.pink .titlebar .dots span{border-color:var(--pink-dark);}
+  textarea{width:100%; height:80px; resize:none; font-family:inherit; font-size:15px;
+    color:var(--brown); background:#fff; border:3px solid var(--pink); border-radius:14px;
+    padding:10px 12px; outline:none;}
+  textarea:focus{border-color:var(--pink-dark);}
+  input[type=text]{width:100%; font-family:inherit; font-size:14px; color:var(--brown);
+    background:#fff; border:3px solid var(--mint); border-radius:12px; padding:8px 12px; outline:none;}
+  .row{display:flex; gap:12px; justify-content:center; margin-top:16px; flex-wrap:wrap;}
+  .btn.pink{background:var(--pink); color:#fff; border:3px solid var(--pink-dark);
+    box-shadow:0 4px 0 var(--pink-dark); padding:9px 22px; font-size:15px;}
+  .btn.mint{background:var(--mint); color:var(--brown); border:3px solid var(--mint-dark);
+    box-shadow:0 4px 0 var(--mint-dark); padding:9px 22px; font-size:15px;}
+  .btn.ghost{background:#fff; color:#b8977a; border:3px solid #e5d2bb;
+    box-shadow:0 4px 0 #e5d2bb; padding:9px 18px; font-size:14px;}
+  #breadPreview{font-size:15px; font-weight:700; margin:4px 0 2px; word-break:break-word;}
+  .hint{font-size:12.5px; color:#b8977a; margin-top:10px;}
+
+  /* ---------- music panel ---------- */
+  #musicPanel{position:fixed; top:70px; right:22px; z-index:9; width:300px; display:none;}
+  #musicPanel.open{display:block;}
+  #playerWrap{position:fixed; bottom:18px; right:18px; z-index:5; display:none;
+    border:3px solid var(--mint-dark); border-radius:14px; overflow:hidden;
+    box-shadow:0 6px 0 rgba(120,90,70,.25); background:#000;}
+  #playerWrap.on{display:block;}
+  #playerWrap iframe{display:block; width:230px; height:130px; border:0;}
+  #stopMusic{position:fixed; bottom:156px; right:18px; z-index:6; display:none;
+    font-size:12px; padding:4px 12px;}
+  #stopMusic.on{display:block;}
+  .preset{font-size:12.5px; padding:6px 12px;}
+
+  .floatplus{position:fixed; z-index:60; font-size:20px; font-weight:700; color:var(--pink-dark);
+    animation:floatup 1s forwards; pointer-events:none;}
+  @keyframes floatup{to{transform:translateY(-50px); opacity:0}}
+
+  .deco{position:absolute; font-size:22px; opacity:.6; z-index:1;}
+</style>
+</head>
+<body>
+<div id="scene">
+  <div id="wall"></div>
+  <div id="counter"></div>
+
+  <!-- window -->
+  <svg id="window" viewBox="0 0 300 230">
+    <rect x="10" y="10" width="280" height="190" rx="16" fill="var(--mint)" stroke="var(--mint-dark)" stroke-width="5"/>
+    <rect x="28" y="28" width="244" height="154" rx="8" fill="var(--sky)" stroke="var(--mint-dark)" stroke-width="4"/>
+    <circle cx="230" cy="66" r="22" fill="#ffe08a" stroke="#f0c96a" stroke-width="3"/>
+    <g fill="#ffffff" stroke="#dcebf2" stroke-width="2">
+      <ellipse cx="90" cy="70" rx="30" ry="14"/><ellipse cx="115" cy="62" rx="20" ry="11"/>
+      <ellipse cx="165" cy="120" rx="26" ry="12"/>
+    </g>
+    <line x1="150" y1="28" x2="150" y2="182" stroke="var(--mint-dark)" stroke-width="4"/>
+    <line x1="28" y1="105" x2="272" y2="105" stroke="var(--mint-dark)" stroke-width="4"/>
+    <rect x="0" y="198" width="300" height="16" rx="8" fill="var(--mint)" stroke="var(--mint-dark)" stroke-width="4"/>
+    <circle cx="60" cy="150" r="3.5" fill="#6b4b3e"/><circle cx="92" cy="150" r="3.5" fill="#6b4b3e"/>
+    <path d="M68 158 q8 7 16 0" stroke="#6b4b3e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="50" cy="158" rx="6" ry="4" fill="#f5aeb6" opacity=".75"/>
+    <ellipse cx="102" cy="158" rx="6" ry="4" fill="#f5aeb6" opacity=".75"/>
+  </svg>
+
+  <span class="deco" style="top:12%; left:12%">🌸</span>
+  <span class="deco" style="top:26%; left:22%">💛</span>
+  <span class="deco" style="top:10%; right:14%">🌿</span>
+  <span class="deco" style="top:30%; right:24%">🩷</span>
+
+  <!-- toaster -->
+  <div id="toasterLabel">toasting… ♨</div>
+  <svg id="toaster" viewBox="0 0 200 160">
+    <rect x="40" y="18" width="120" height="22" rx="11" fill="#e8b0bc" stroke="#c9879a" stroke-width="3"/>
+    <rect x="52" y="24" width="96" height="10" rx="5" fill="#7a5a44"/>
+    <rect x="14" y="34" width="172" height="116" rx="30" fill="var(--pink)" stroke="#c9879a" stroke-width="4"/>
+    <rect x="170" y="60" width="14" height="30" rx="6" fill="#fff" stroke="#c9879a" stroke-width="3"/>
+    <circle cx="48" cy="66" r="9" fill="#fff" stroke="#c9879a" stroke-width="3"/>
+    <circle cx="48" cy="66" r="3" fill="#c9879a"/>
+    <circle cx="80" cy="100" r="5.5" fill="#6b4b3e"/>
+    <circle cx="120" cy="100" r="5.5" fill="#6b4b3e"/>
+    <ellipse cx="62" cy="112" rx="9" ry="6" fill="#f5aeb6" opacity=".8"/>
+    <ellipse cx="138" cy="112" rx="9" ry="6" fill="#f5aeb6" opacity=".8"/>
+    <path d="M91 110 q9 9 18 0" stroke="#6b4b3e" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <rect x="30" y="150" width="18" height="8" rx="4" fill="#c9879a"/>
+    <rect x="152" y="150" width="18" height="8" rx="4" fill="#c9879a"/>
+  </svg>
+
+  <!-- dustbin -->
+  <div id="binBadge">toasted ✕ <span id="binCount">0</span></div>
+  <svg id="bin" viewBox="0 0 130 130">
+    <rect x="18" y="10" width="94" height="14" rx="7" fill="var(--mint)" stroke="var(--mint-dark)" stroke-width="3.5"/>
+    <rect x="52" y="2" width="26" height="10" rx="5" fill="var(--mint)" stroke="var(--mint-dark)" stroke-width="3"/>
+    <path d="M26 26 L104 26 L96 124 L34 124 Z" fill="var(--mint)" stroke="var(--mint-dark)" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="50" y1="40" x2="52" y2="110" stroke="var(--mint-dark)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="80" y1="40" x2="78" y2="110" stroke="var(--mint-dark)" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="53" cy="70" r="4" fill="#6b4b3e"/><circle cx="77" cy="70" r="4" fill="#6b4b3e"/>
+    <path d="M59 80 q6 6 12 0" stroke="#6b4b3e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="45" cy="79" rx="6" ry="4" fill="#f5aeb6" opacity=".8"/>
+    <ellipse cx="85" cy="79" rx="6" ry="4" fill="#f5aeb6" opacity=".8"/>
+  </svg>
+
+  <div id="empty">the counter is clean ✨ add a task to bake some bread 🍞</div>
+  <div id="breads"></div>
+</div>
+
+<h1>toast <small>tiny tasks, freshly baked</small></h1>
+<button class="btn" id="newTaskBtn">🍞 + new task</button>
+<button class="btn" id="musicBtn">🎵 music</button>
+
+<!-- music panel -->
+<div id="musicPanel">
+  <div class="card">
+    <div class="titlebar">kitchen radio 🎧 <span class="dots"><span></span><span></span></span></div>
+    <div class="body">
+      <input type="text" id="ytUrl" placeholder="paste a YouTube link…">
+      <div class="row">
+        <button class="btn mint" id="playMusic">▶ play</button>
+        <button class="btn ghost preset" data-id="jfKfPfyJRdk">lofi girl ☕</button>
+        <button class="btn ghost preset" data-id="4xDzrJKXOOY">jazz café 🥐</button>
+      </div>
+      <div class="hint">plays in a mini player, bottom right</div>
+    </div>
+  </div>
+</div>
+<div id="playerWrap"><iframe id="player" src="" allow="autoplay; encrypted-media" title="music"></iframe></div>
+<button class="btn ghost" id="stopMusic">✕ stop music</button>
+
+<!-- new task modal -->
+<div class="overlay" id="newModal">
+  <div class="card pink">
+    <div class="titlebar">new task 🍞 <span class="dots"><span></span><span></span></span></div>
+    <div class="body">
+      <textarea id="taskInput" maxlength="90" placeholder="what needs doing? (it becomes a slice of bread!)"></textarea>
+      <div class="row">
+        <button class="btn ghost" id="cancelNew">nevermind</button>
+        <button class="btn pink" id="addTask">bake it! 🍞</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- bread click modal -->
+<div class="overlay" id="breadModal">
+  <div class="card">
+    <div class="titlebar">this little slice… <span class="dots"><span></span><span></span></span></div>
+    <div class="body">
+      <div id="breadPreview"></div>
+      <div class="hint">done with it? toast it and it hops into the bin!</div>
+      <div class="row">
+        <button class="btn mint" id="keepBread">keep it 🤍</button>
+        <button class="btn pink" id="toastBread">toast it! ♨🍞</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let tasks = [], toastedCount = 0, current = null;
+
+// ---- persistence (safe if storage unavailable) ----
+try {
+  tasks = JSON.parse(localStorage.getItem('toast.tasks') || '[]');
+  toastedCount = +(localStorage.getItem('toast.count') || 0);
+} catch(e) {}
+function save(){
+  try {
+    localStorage.setItem('toast.tasks', JSON.stringify(tasks));
+    localStorage.setItem('toast.count', toastedCount);
+  } catch(e) {}
+}
+
+// ---- render ----
+function render(){
+  const area = $('#breads');
+  area.innerHTML = '';
+  tasks.forEach(t => area.appendChild(makeBread(t)));
+  $('#empty').style.display = tasks.length ? 'none' : 'block';
+  $('#binCount').textContent = toastedCount;
+}
+function makeBread(t){
+  const d = document.createElement('div');
+  d.className = 'bread';
+  d.innerHTML = '<div class="inner"></div><span class="eye l"></span><span class="eye r"></span>' +
+    '<span class="cheek l"></span><span class="cheek r"></span><span class="smile"></span>';
+  const txt = document.createElement('div');
+  txt.className = 'btext';
+  txt.textContent = t.text;
+  d.appendChild(txt);
+  d.onclick = () => { current = {t, el:d}; $('#breadPreview').textContent = '“' + t.text + '”'; $('#breadModal').classList.add('open'); };
+  return d;
+}
+
+// ---- new task ----
+$('#newTaskBtn').onclick = () => { $('#newModal').classList.add('open'); $('#taskInput').value=''; $('#taskInput').focus(); };
+$('#cancelNew').onclick = () => $('#newModal').classList.remove('open');
+$('#addTask').onclick = addTask;
+$('#taskInput').addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); addTask(); } });
+function addTask(){
+  const text = $('#taskInput').value.trim();
+  if(!text) return;
+  tasks.push({id: Date.now(), text});
+  save(); render();
+  $('#newModal').classList.remove('open');
+}
+
+// ---- bread modal ----
+$('#keepBread').onclick = () => $('#breadModal').classList.remove('open');
+$('#toastBread').onclick = () => { $('#breadModal').classList.remove('open'); if(current) runToast(current); };
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
+
+// ---- toast sequence ----
+function runToast({t, el}){
+  const r = el.getBoundingClientRect();
+  const toaster = $('#toaster');
+  const tr = toaster.getBoundingClientRect();
+  el.style.visibility = 'hidden';
+
+  // fly to toaster
+  const clone = el.cloneNode(true);
+  clone.style.visibility = 'visible';
+  Object.assign(clone.style, {position:'fixed', left:r.left+'px', top:r.top+'px',
+    width:r.width+'px', height:r.height+'px', margin:0, zIndex:50, pointerEvents:'none'});
+  document.body.appendChild(clone);
+  const dx = (tr.left + tr.width/2) - (r.left + r.width/2);
+  const dy = (tr.top + 6) - r.top;
+  clone.animate(
+    [{transform:'translate(0,0) scale(1)'}, {transform:`translate(${dx}px,${dy}px) scale(.42)`, opacity:.9}],
+    {duration:700, easing:'cubic-bezier(.45,-.15,.65,1)', fill:'forwards'}
+  );
+
+  setTimeout(() => {
+    clone.remove();
+    toaster.classList.add('toasting');
+    $('#toasterLabel').classList.add('show');
+    tasks = tasks.filter(x => x.id !== t.id);
+    save(); render();
+  }, 700);
+
+  setTimeout(() => {
+    toaster.classList.remove('toasting');
+    $('#toasterLabel').classList.remove('show');
+    popToast();
+  }, 700 + 3000);
+}
+
+function popToast(){
+  const tr = $('#toaster').getBoundingClientRect();
+  const br = $('#bin').getBoundingClientRect();
+  const mini = document.createElement('div');
+  mini.className = 'bread toasted';
+  mini.innerHTML = '<div class="inner"></div><span class="eye l"></span><span class="eye r"></span>' +
+    '<span class="cheek l"></span><span class="cheek r"></span><span class="smile"></span>';
+  Object.assign(mini.style, {position:'fixed', width:'76px', height:'68px', zIndex:50,
+    left:(tr.left + tr.width/2 - 38)+'px', top:(tr.top - 10)+'px', pointerEvents:'none', animation:'none'});
+  document.body.appendChild(mini);
+
+  const dx = (br.left + br.width/2) - (tr.left + tr.width/2);
+  const dy = (br.top + 20) - (tr.top - 10);
+  mini.animate([
+    {transform:'translate(0,24px) scale(.85)', opacity:1},
+    {transform:'translate(0,-70px) scale(1)', offset:.35},
+    {transform:`translate(${dx}px,${dy}px) scale(.45) rotate(140deg)`, opacity:.85}
+  ], {duration:1100, easing:'ease-in', fill:'forwards'});
+
+  setTimeout(() => $('#bin').classList.add('wobble'), 850);
+  setTimeout(() => {
+    mini.remove();
+    $('#bin').classList.remove('wobble');
+    toastedCount++;
+    save();
+    $('#binCount').textContent = toastedCount;
+    const p = document.createElement('div');
+    p.className = 'floatplus'; p.textContent = '+1 ♡';
+    const b = $('#bin').getBoundingClientRect();
+    p.style.left = (b.left + b.width/2 - 14) + 'px';
+    p.style.top = (b.top - 20) + 'px';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1000);
+  }, 1150);
+}
+
+// ---- music ----
+$('#musicBtn').onclick = () => $('#musicPanel').classList.toggle('open');
+$('#playMusic').onclick = () => playYt($('#ytUrl').value);
+document.querySelectorAll('.preset').forEach(b => b.onclick = () => playYt(b.dataset.id));
+function playYt(input){
+  input = (input || '').trim();
+  const m = input.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/) || input.match(/^([\w-]{11})$/);
+  if(!m){ alert('hmm, that doesn\'t look like a YouTube link 🥲'); return; }
+  const id = m[1];
+  $('#player').src = `https://www.youtube.com/embed/${id}?autoplay=1&loop=1&playlist=${id}`;
+  $('#playerWrap').classList.add('on');
+  $('#stopMusic').classList.add('on');
+  $('#musicPanel').classList.remove('open');
+}
+$('#stopMusic').onclick = () => {
+  $('#player').src = '';
+  $('#playerWrap').classList.remove('on');
+  $('#stopMusic').classList.remove('on');
+};
+
+render();
+</script>
+</body>
+</html>
