@@ -65,9 +65,9 @@
     font-size:16px; z-index:1; pointer-events:none;}
 
   .bread{position:relative; width:134px; height:120px; flex:0 0 auto; cursor:pointer;
-    background:var(--bread); border:3px solid var(--crust);
+    background:#f8e3b0; border:4px solid #8a5a33;
     border-radius:48% 48% 22% 22% / 42% 42% 16% 16%;
-    box-shadow:0 6px 0 rgba(160,120,80,.25);
+    box-shadow:0 7px 0 rgba(115,75,40,.4), 0 0 0 3px #fffdf5;
     animation:popin .35s cubic-bezier(.3,1.6,.6,1); transition:transform .15s;}
   .bread:hover{transform:translateY(-5px) rotate(-2deg);}
   .bread .inner{position:absolute; inset:9px; background:var(--cream);
@@ -149,6 +149,29 @@
   @keyframes floatup{to{transform:translateY(-50px); opacity:0}}
 
   .deco{position:absolute; font-size:22px; opacity:.6; z-index:1;}
+
+  /* ---------- mobile / narrow screens ---------- */
+  @media (max-width: 760px){
+    h1{font-size:24px; top:10px; left:14px;}
+    h1 small{font-size:11px; margin-top:-4px;}
+    #window{width:150px; top:11%;}
+    .deco{font-size:15px;}
+    #toaster{width:118px; left:10px;}
+    #toasterLabel{left:26px; bottom:calc(44% + 96px); font-size:11px;}
+    #bin{width:76px; right:10px;}
+    #binBadge{right:12px; bottom:calc(44% + 78px); font-size:10px; padding:1px 8px;}
+    #breads{left:10px; right:10px; top:calc(56% + 10px); bottom:76px; gap:12px; justify-content:center;}
+    .bread{width:106px; height:96px; border-width:2.5px;}
+    .bread .inner{inset:7px;}
+    .btext{top:12px; left:12px; right:12px; height:42px; font-size:10.5px;}
+    #empty{top:65%; font-size:13px; padding:0 30px;}
+    #newTaskBtn{font-size:14px; padding:10px 18px; bottom:14px; left:14px;}
+    #musicBtn{font-size:13px; padding:7px 14px; top:12px; right:14px;}
+    #musicPanel{top:58px; right:12px; width:min(300px, calc(100vw - 24px));}
+    #playerWrap iframe{width:170px; height:96px;}
+    #playerWrap{bottom:14px; right:14px;}
+    #stopMusic{bottom:122px; right:14px;}
+  }
 </style>
 </head>
 <body>
