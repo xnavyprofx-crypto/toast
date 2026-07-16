@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>toast 🍞 — your pantry</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+  :root{
+    --wall:#fdf3e7; --pink:#f6c6cf; --pink-dark:#e79aa9; --mint:#bfe3d2; --mint-dark:#8cc9ae;
+    --cream:#fff8ec; --brown:#7a5a44; --soft:#b8977a; --gold:#e8cd78;
+  }
+  *{box-sizing:border-box; margin:0;}
+  body{font-family:'Baloo 2','Comic Sans MS',cursive; color:var(--brown);
+    background:var(--wall); background-image:radial-gradient(#f6e2cc 8%, transparent 9%);
+    background-size:46px 46px; min-height:100vh; display:flex;}
+
+  /* ---------- sidebar ---------- */
+  #side{width:240px; flex:0 0 auto; background:var(--cream); border-right:4px solid var(--pink);
+    padding:22px 16px; display:flex; flex-direction:column; gap:14px; min-height:100vh;}
+  #logo{font-size:30px; font-weight:700; color:var(--pink-dark); text-shadow:2px 2px 0 #fff; padding-left:6px;}
+  #logo small{display:block; font-size:11px; color:var(--soft); margin-top:-6px; font-weight:500;}
+
+  #profile{background:#fff; border:3px solid var(--mint); border-radius:18px; padding:14px 12px;
+    text-align:center; box-shadow:0 4px 0 rgba(120,90,70,.15);}
+  #avatar{width:74px; height:74px; margin:0 auto 4px;}
+  #avatar svg{width:100%; height:100%;}
+  .avbtn{width:52px; height:52px; background:#fff; border:3px solid var(--mint);
+    border-radius:12px; cursor:pointer; padding:3px; transition:transform .12s;}
+  .avbtn:hover{transform:scale(1.1);}
+  .avbtn.sel{border-color:var(--pink-dark); background:#ffeef1;}
+  .avbtn svg{width:100%; height:100%;}
+  #profile .name{font-weight:700; font-size:16px;}
+  #profile .email{font-size:11px; color:var(--soft); word-break:break-all;}
+
+  nav{display:flex; flex-direction:column; gap:8px;}
+  nav a{display:block; text-decoration:none; color:var(--brown); font-weight:700; font-size:15px;
+    padding:10px 14px; border-radius:14px; border:3px solid transparent; transition:all .15s; cursor:pointer;}
+  nav a:hover{background:#fff; border-color:var(--mint);}
+  nav a.active{background:var(--pink); color:#fff; border-color:var(--pink-dark);
+    box-shadow:0 3px 0 var(--pink-dark);}
+  nav a.admin{display:none; background:#fff3c4; border-color:var(--gold); color:#8a6a2f;}
+
+  #side .foot{margin-top:auto; font-size:11px; color:var(--soft); text-align:center;}
+
+  /* ---------- main ---------- */
+  #main{flex:1; padding:28px 32px; max-width:980px;}
+  h2{font-size:26px; color:var(--pink-dark); text-shadow:1.5px 1.5px 0 #fff;}
+  .sub{font-size:14px; color:var(--soft); margin-bottom:20px;}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px; margin-bottom:20px;}
+  .stat{background:var(--cream); border:3px solid var(--mint-dark); border-radius:18px;
+    padding:14px 16px; box-shadow:0 5px 0 rgba(120,90,70,.15); text-align:center;}
+  .stat .num{font-size:30px; font-weight:700; color:var(--pink-dark); line-height:1.1;}
+  .stat .lbl{font-size:12.5px; color:var(--soft); font-weight:700;}
+
+  #hours{background:var(--pink); border:3px solid var(--pink-dark); border-radius:20px;
+    padding:18px 22px; color:#fff; box-shadow:0 6px 0 var(--pink-dark); margin-bottom:20px;}
+  #hours .big{font-size:24px; font-weight:700; text-shadow:1px 1px 0 rgba(0,0,0,.08);}
+  #hours .cute{font-size:14px; margin-top:2px; opacity:.95;}
+
+  .panel{background:var(--cream); border:3px solid var(--mint-dark); border-radius:20px;
+    padding:18px 20px; box-shadow:0 5px 0 rgba(120,90,70,.15); margin-bottom:20px;}
+  .panel h3{font-size:16px; margin-bottom:12px;}
+
+  #chart{display:flex; align-items:flex-end; gap:14px; height:170px; padding:0 6px;}
+  .bar{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;}
+  .bar .fill{width:70%; max-width:44px; background:#f8e3b0; border:3px solid #8a5a33;
+    border-radius:10px 10px 6px 6px; position:relative;}
+  .bar .fill::after{content:'🍞'; position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:13px;}
+  .bar .day{font-size:11px; color:var(--soft); font-weight:700; margin-top:6px;}
+  .bar .val{font-size:13px; color:var(--brown); font-weight:700; margin-bottom:26px;}
+  .bar.today .fill{background:var(--pink); border-color:var(--pink-dark);}
+
+  #recent li{list-style:none; font-size:13.5px; font-weight:700; padding:7px 4px;
+    border-bottom:1.5px dashed #e5d2bb;}
+  #recent li:last-child{border-bottom:none;}
+  #recent li::before{content:'🍞 ';}
+  .when{float:right; font-weight:500; font-size:11px; color:#c4a983;}
+
+  .mocknote{font-size:11.5px; color:var(--soft); text-align:center; margin-top:6px; display:none;}
+
+  /* ---------- settings ---------- */
+  .section{display:none;}
+  .section.on{display:block;}
+  .setrow{display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:12px 4px; border-bottom:1.5px dashed #e5d2bb; flex-wrap:wrap;}
+  .setrow:last-child{border-bottom:none;}
+  .setrow .lab{font-weight:700; font-size:14.5px;}
+  .setrow .des{font-size:12px; color:var(--soft); font-weight:500;}
+  input[type=text]{font-family:inherit; font-size:14px; color:var(--brown); background:#fff;
+    border:3px solid var(--mint); border-radius:12px; padding:7px 12px; outline:none; width:200px;}
+  .btn{font-family:inherit; font-weight:700; border:none; cursor:pointer; border-radius:18px;
+    padding:8px 18px; font-size:14px; transition:transform .12s;}
+  .btn:hover{transform:scale(1.05);}
+  .btn.pink{background:var(--pink); color:#fff; border:3px solid var(--pink-dark); box-shadow:0 3px 0 var(--pink-dark);}
+  .btn.mint{background:var(--mint); color:var(--brown); border:3px solid var(--mint-dark); box-shadow:0 3px 0 var(--mint-dark);}
+  .btn.danger{background:#fff; color:#c96a6a; border:3px solid #e8a3a3; box-shadow:0 3px 0 #e8a3a3;}
+
+  .switch{position:relative; width:54px; height:28px; flex:0 0 auto;}
+  .switch input{display:none;}
+  .switch .tr{position:absolute; inset:0; background:#eee0cc; border:2.5px solid #d9c4a6;
+    border-radius:20px; cursor:pointer; transition:background .2s;}
+  .switch .tr::after{content:''; position:absolute; top:1.5px; left:2px; width:19px; height:19px;
+    background:#fff; border:2px solid #d9c4a6; border-radius:50%; transition:left .2s;}
+  .switch input:checked + .tr{background:var(--mint); border-color:var(--mint-dark);}
+  .switch input:checked + .tr::after{left:26px; border-color:var(--mint-dark);}
+
+  #about p{font-size:13.5px; line-height:1.55; margin-bottom:8px;}
+  #about a{color:var(--pink-dark); font-weight:700;}
+  #saveMsg{font-size:12px; color:var(--mint-dark); font-weight:700; margin-left:8px;}
+
+  /* ---------- mobile ---------- */
+  @media (max-width:720px){
+    body{flex-direction:column;}
+    #side{width:100%; min-height:0; flex-direction:row; flex-wrap:wrap; align-items:center;
+      gap:10px; padding:12px 14px; border-right:none; border-bottom:4px solid var(--pink);}
+    #logo{font-size:22px;}
+    #logo small{display:none;}
+    #profile{display:flex; align-items:center; gap:8px; padding:6px 10px; text-align:left;}
+    #avatar{width:38px; height:33px; margin:0;}
+    #profile .email{display:none;}
+    #profile .name{font-size:13px;}
+    nav{flex-direction:row; margin-left:auto; gap:6px; flex-wrap:wrap;}
+    nav a{font-size:12px; padding:6px 10px; border-radius:10px;}
+    #side .foot{display:none;}
+    #main{padding:18px 14px;}
+    h2{font-size:20px;}
+    .cards{grid-template-columns:1fr 1fr;}
+    #chart{gap:8px; height:130px;}
+    input[type=text]{width:150px;}
+  }
+</style>
+</head>
+<body>
+  <aside id="side">
+    <div id="logo">toast <small>your pantry</small></div>
+
+    <div id="profile">
+      <div id="avatar"></div>
+      <div>
+        <div class="name" id="pName">baker</div>
+        <div class="email" id="pEmail"></div>
+      </div>
+    </div>
+
+    <nav>
+      <a href="index.html">🍳 my kitchen</a>
+      <a class="active" data-sec="stats">📊 statistics</a>
+      <a data-sec="settings">⚙️ settings</a>
+      <a class="admin" id="adminLink" href="admin.html">🔑 owner's pantry</a>
+      <a id="logoutBtn">🚪 log out</a>
+    </nav>
+
+    <div class="foot">baked with ♡ — toast, by Navya</div>
+  </aside>
+
+  <main id="main">
+    <!-- ============ STATISTICS ============ -->
+    <div class="section on" id="sec-stats">
+      <h2 id="greet">hello, baker ☁️</h2>
+      <div class="sub">here's what you've been baking lately</div>
+
+      <div class="cards">
+        <div class="stat"><div class="num" id="stToday">0</div><div class="lbl">toasted today</div></div>
+        <div class="stat"><div class="num" id="stWeek">0</div><div class="lbl">this week</div></div>
+        <div class="stat"><div class="num" id="stAll">0</div><div class="lbl">all time</div></div>
+        <div class="stat"><div class="num" id="stStreak">0</div><div class="lbl">day streak</div></div>
+        <div class="stat"><div class="num" id="stAvg">0</div><div class="lbl">avg per day</div></div>
+      </div>
+
+      <div id="hours">
+        <div class="big" id="hoursBig">you've baked back 0 hours this week ♡</div>
+        <div class="cute" id="cuteLine">that's a whole book you could read 📖</div>
+      </div>
+
+      <div class="panel">
+        <h3>your week in bread 🍞</h3>
+        <div id="chart"></div>
+      </div>
+
+      <div class="panel">
+        <h3>fresh out of the toaster ♨</h3>
+        <ul id="recent"></ul>
+        <div class="mocknote" id="emptyRecent">nothing toasted yet — go bake something! 🍞</div>
+      </div>
+
+      <div class="mocknote" id="mockBanner">🎀 sample data — connect Supabase in config.js and log in to see your real stats</div>
+    </div>
+
+    <!-- ============ SETTINGS ============ -->
+    <div class="section" id="sec-settings">
+      <h2>settings ⚙️</h2>
+      <div class="sub">keep your kitchen just how you like it</div>
+
+      <div class="panel">
+        <div class="setrow">
+          <div><div class="lab">your baker 🍞</div><div class="des">pick your look</div></div>
+          <div id="avatarPick" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+        </div>
+        <div class="setrow">
+          <div><div class="lab">what should we call you?</div><div class="des">shown in your greeting</div></div>
+          <div><input type="text" id="setName" maxlength="30" placeholder="your name">
+          <button class="btn mint" id="saveName">save</button><span id="saveMsg"></span></div>
+        </div>
+        <div class="setrow">
+          <div><div class="lab">sounds 🔔</div><div class="des">the toast pop when a timer finishes</div></div>
+          <label class="switch"><input type="checkbox" id="setSound" checked><span class="tr"></span></label>
+        </div>
+        <div class="setrow">
+          <div><div class="lab">notifications 💬</div><div class="des">desktop nudge when you're in another tab</div></div>
+          <label class="switch"><input type="checkbox" id="setNotif" checked><span class="tr"></span></label>
+        </div>
+        <div class="setrow">
+          <div><div class="lab">export my data 📦</div><div class="des">download all your toasted tasks as a CSV</div></div>
+          <button class="btn mint" id="exportBtn">download</button>
+        </div>
+        <div class="setrow">
+          <div><div class="lab">delete my account 🥀</div><div class="des">removes your account and all your data, forever</div></div>
+          <button class="btn danger" id="deleteBtn">delete</button>
+        </div>
+      </div>
+
+      <div class="panel" id="about">
+        <h3>about toast 🍞</h3>
+        <p>toast is a tiny productivity kitchen: your tasks become bread, focus turns them golden,
+          and every toasted slice is proof of a thing you actually finished.</p>
+        <p>made with ♡ by Navya. found a bug, have an idea, or just want to say hi?
+          write to <a href="mailto:xnavyprofx@gmail.com">xnavyprofx@gmail.com</a> 💌</p>
+      </div>
+    </div>
+  </main>
+
+<script>
+const $ = s => document.querySelector(s);
+const CFG = window.TOAST_CONFIG || {};
+const sb = (CFG.SUPABASE_URL || '').startsWith('http')
+  ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
+
+let user = null, rows = []; // rows: [{text, at}]
+
+// ---------- baker avatars ----------
+function breadSvg(hat, extraFace){
+  return `<svg viewBox="0 0 80 84" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 42 a24 20 0 0 1 48 0 v20 a8 8 0 0 1 -8 8 h-32 a8 8 0 0 1 -8 -8 z"
+      fill="#f8e3b0" stroke="#8a5a33" stroke-width="3"/>
+    <circle cx="32" cy="54" r="2.6" fill="#6b4b3e"/><circle cx="48" cy="54" r="2.6" fill="#6b4b3e"/>
+    <path d="M36 59 q4 4 8 0" stroke="#6b4b3e" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <ellipse cx="25" cy="59" rx="4" ry="2.5" fill="#f5aeb6" opacity=".8"/>
+    <ellipse cx="55" cy="59" rx="4" ry="2.5" fill="#f5aeb6" opacity=".8"/>
+    ${extraFace || ''}${hat || ''}</svg>`;
+}
+const AVATARS = {
+  classic: breadSvg(''),
+  chef: breadSvg(`<ellipse cx="40" cy="17" rx="15" ry="9" fill="#fff" stroke="#d9c4a6" stroke-width="2.5"/>
+    <rect x="29" y="19" width="22" height="9" rx="3" fill="#fff" stroke="#d9c4a6" stroke-width="2.5"/>`),
+  wizard: breadSvg(`<path d="M40 0 L55 27 L25 27 Z" fill="#b9a7e8" stroke="#8f77c9" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="40" cy="15" r="2.2" fill="#fff"/><circle cx="34" cy="22" r="1.4" fill="#fff" opacity=".8"/>`),
+  teacher: breadSvg(`<path d="M17 18 L40 9 L63 18 L40 27 Z" fill="#7a5a44"/>
+    <rect x="31" y="21" width="18" height="6" rx="2" fill="#5d4433"/>
+    <line x1="61" y1="19" x2="61" y2="30" stroke="#e8cd78" stroke-width="2"/>
+    <circle cx="61" cy="32" r="2.5" fill="#e8cd78"/>`,
+    `<circle cx="32" cy="54" r="6.5" fill="none" stroke="#7a5a44" stroke-width="2"/>
+     <circle cx="48" cy="54" r="6.5" fill="none" stroke="#7a5a44" stroke-width="2"/>
+     <line x1="38.5" y1="54" x2="41.5" y2="54" stroke="#7a5a44" stroke-width="2"/>`)
+};
+let avatarKey = 'classic';
+function setAvatar(key){
+  avatarKey = AVATARS[key] ? key : 'classic';
+  $('#avatar').innerHTML = AVATARS[avatarKey];
+  document.querySelectorAll('.avbtn').forEach(b => b.classList.toggle('sel', b.dataset.k === avatarKey));
+}
+function initAvatarPicker(){
+  const wrap = $('#avatarPick');
+  Object.keys(AVATARS).forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'avbtn'; b.dataset.k = k; b.title = k;
+    b.innerHTML = AVATARS[k];
+    b.onclick = async () => {
+      setAvatar(k);
+      try { localStorage.setItem('toast.avatar', k); } catch(e) {}
+      if(sb && user) await sb.from('profiles').upsert({id: user.id, avatar: k});
+    };
+    wrap.appendChild(b);
+  });
+}
+
+// ---------- section nav ----------
+document.querySelectorAll('nav a[data-sec]').forEach(a => a.onclick = () => {
+  document.querySelectorAll('nav a[data-sec]').forEach(x => x.classList.remove('active'));
+  a.classList.add('active');
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('on'));
+  $('#sec-' + a.dataset.sec).classList.add('on');
+});
+$('#logoutBtn').onclick = async () => {
+  if(sb) await sb.auth.signOut();
+  location.href = 'index.html';
+};
+
+// ---------- stats rendering ----------
+const dayKey = d => new Date(d).toDateString();
+function renderStats(name){
+  $('#greet').textContent = `hello, ${name || 'baker'} ☁️`;
+  $('#pName').textContent = name || 'baker';
+
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const weekCut = Date.now() - 7 * 864e5;
+
+  const today = rows.filter(r => r.at >= startToday).length;
+  const week = rows.filter(r => r.at >= weekCut).length;
+  const all = rows.length;
+
+  // streak: consecutive days with >=1 toast, ending today (or yesterday)
+  const days = new Set(rows.map(r => dayKey(r.at)));
+  let streak = 0, d = new Date();
+  if(!days.has(dayKey(d))) d.setDate(d.getDate() - 1);
+  while(days.has(dayKey(d))){ streak++; d.setDate(d.getDate() - 1); }
+
+  // avg per day since first toast
+  let avg = 0;
+  if(all){
+    const first = Math.min(...rows.map(r => r.at));
+    const span = Math.max(1, Math.round((Date.now() - first) / 864e5) + 1);
+    avg = (all / span).toFixed(1);
+  }
+
+  $('#stToday').textContent = today;
+  $('#stWeek').textContent = week;
+  $('#stAll').textContent = all;
+  $('#stStreak').textContent = streak ? streak + ' 🔥' : '0';
+  $('#stAvg').textContent = avg;
+
+  const hrs = (week * 25 / 60).toFixed(1);
+  $('#hoursBig').textContent = `you've baked back ${hrs} hours this week ♡`;
+
+  // 7-day chart
+  const chart = $('#chart');
+  chart.innerHTML = '';
+  const counts = [];
+  for(let i = 6; i >= 0; i--){
+    const day = new Date(); day.setDate(day.getDate() - i); day.setHours(0,0,0,0);
+    const next = day.getTime() + 864e5;
+    counts.push({
+      label: i === 0 ? 'today' : day.toLocaleDateString(undefined, {weekday:'short'}).toLowerCase(),
+      n: rows.filter(r => r.at >= day.getTime() && r.at < next).length,
+      today: i === 0
+    });
+  }
+  const max = Math.max(1, ...counts.map(c => c.n));
+  counts.forEach(c => {
+    const bar = document.createElement('div');
+    bar.className = 'bar' + (c.today ? ' today' : '');
+    bar.innerHTML = `<span class="val">${c.n}</span>
+      <div class="fill" style="height:${5 + (c.n / max) * 75}%"></div>
+      <span class="day">${c.label}</span>`;
+    chart.appendChild(bar);
+  });
+
+  // recent list
+  const ul = $('#recent');
+  ul.innerHTML = '';
+  rows.slice(0, 8).forEach(r => {
+    const li = document.createElement('li');
+    li.textContent = r.text;
+    const w = document.createElement('span');
+    w.className = 'when';
+    w.textContent = new Date(r.at).toLocaleString(undefined,
+      {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+    li.appendChild(w);
+    ul.appendChild(li);
+  });
+  $('#emptyRecent').style.display = rows.length ? 'none' : 'block';
+}
+
+// rotating cute equivalences
+const lines = [
+  'that\'s a whole book you could read 📖',
+  'that\'s 4 movies with popcorn 🍿',
+  'that\'s 9 slow morning coffees ☕',
+  'that\'s a full night of extra sleep 😴',
+  'that\'s hours back for your hobby 🎨'
+];
+let li_ = 0;
+setInterval(() => { li_ = (li_ + 1) % lines.length; $('#cuteLine').textContent = lines[li_]; }, 3500);
+
+// ---------- settings ----------
+function initToggles(){
+  $('#setSound').checked = localStorage.getItem('toast.sound') !== 'off';
+  $('#setNotif').checked = localStorage.getItem('toast.notif') !== 'off';
+  $('#setSound').onchange = e => localStorage.setItem('toast.sound', e.target.checked ? 'on' : 'off');
+  $('#setNotif').onchange = e => localStorage.setItem('toast.notif', e.target.checked ? 'on' : 'off');
+}
+$('#saveName').onclick = async () => {
+  const name = $('#setName').value.trim();
+  if(!name) return;
+  if(sb && user) await sb.from('profiles').upsert({id: user.id, name});
+  else localStorage.setItem('toast.name', name);
+  $('#saveMsg').textContent = 'saved ♡';
+  setTimeout(() => $('#saveMsg').textContent = '', 2000);
+  renderStats(name);
+};
+$('#exportBtn').onclick = () => {
+  const csv = 'task,toasted_at\n' + rows.map(r =>
+    `"${r.text.replace(/"/g, '""')}","${new Date(r.at).toISOString()}"`).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
+  a.download = 'toast-history.csv';
+  a.click();
+};
+$('#deleteBtn').onclick = async () => {
+  if(!sb || !user) return alert('you\'re in guest mode — nothing stored on our side!');
+  if(!confirm('really delete your account and all your bread? this cannot be undone 🥀')) return;
+  const {error} = await sb.rpc('delete_me');
+  if(error) return alert('something went wrong: ' + error.message);
+  await sb.auth.signOut();
+  location.href = 'index.html';
+};
+
+// ---------- boot ----------
+(async function boot(){
+  initToggles();
+  initAvatarPicker();
+  setAvatar(localStorage.getItem('toast.avatar') || 'classic');
+
+  if(!sb){
+    // sample data preview mode
+    $('#mockBanner').style.display = 'block';
+    const now = Date.now();
+    rows = [
+      {text:'send the quarterly report to Priya', at: now - 2*36e5},
+      {text:'book dentist appointment', at: now - 5*36e5},
+      {text:'review landing page copy', at: now - 8*36e5},
+      {text:'reply to beta tester email', at: now - 26*36e5},
+      {text:'push new build to GitHub', at: now - 30*36e5},
+      {text:'plan the week', at: now - 3*864e5},
+      {text:'water the plants', at: now - 4*864e5},
+      {text:'draft launch post', at: now - 5*864e5}
+    ];
+    renderStats(localStorage.getItem('toast.name') || 'baker');
+    return;
+  }
+
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session){ location.href = 'index.html'; return; }
+  user = session.user;
+  $('#pEmail').textContent = user.email || '';
+
+  if(user.email && user.email === CFG.ADMIN_EMAIL)
+    $('#adminLink').style.display = 'block';
+
+  const [prof, toasts] = await Promise.all([
+    sb.from('profiles').select('name,avatar').eq('id', user.id).maybeSingle(),
+    sb.from('toasts').select('text,toasted_at').order('toasted_at', {ascending:false}).limit(2000)
+  ]);
+  rows = (toasts.data || []).map(r => ({text: r.text, at: +new Date(r.toasted_at)}));
+  const name = (prof.data && prof.data.name) || (user.email || '').split('@')[0];
+  $('#setName').value = (prof.data && prof.data.name) || '';
+  if(prof.data && prof.data.avatar) setAvatar(prof.data.avatar);
+  renderStats(name);
+})();
+</script>
+</body>
+</html>

@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>toast 🍞 — cute little tasks</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <style>
   :root{
     --wall:#fdf3e7; --wood:#f3d9b1; --wood-dark:#dcb888;
@@ -48,15 +50,21 @@
     border-radius:14px; padding:2px 12px; font-size:13px; opacity:0; transition:opacity .3s;}
   #toasterLabel.show{opacity:1;}
 
-  /* ---------- bin ---------- */
+  /* ---------- bin + placard ---------- */
   #bin{position:absolute; bottom:calc(44% - 4px); right:40px; width:130px; z-index:3;}
   #bin.wobble{animation:wobble .5s;}
   @keyframes wobble{
     0%,100%{transform:rotate(0)} 30%{transform:rotate(-6deg)} 60%{transform:rotate(5deg)}
   }
-  #binBadge{position:absolute; bottom:calc(44% + 128px); right:52px; z-index:3;
-    background:#fff; border:2px solid var(--mint-dark); border-radius:14px;
-    padding:2px 10px; font-size:12px; color:var(--brown);}
+  #placard{position:absolute; bottom:calc(44% + 132px); right:30px; z-index:4; cursor:pointer;
+    background:var(--cream); border:4px solid #c9a26b; border-radius:10px;
+    padding:5px 16px 7px; text-align:center; transition:transform .15s;
+    box-shadow:0 4px 0 rgba(120,90,70,.25), inset 0 0 0 2.5px #ecd9b4;}
+  #placard:hover{transform:scale(1.07) rotate(-1deg);}
+  #placard::before{content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+    width:8px; height:8px; border-radius:50%; background:#c9a26b;}
+  #placard .pl-title{font-size:11px; color:#b8977a; font-weight:700;}
+  #placard .pl-count{font-size:24px; line-height:1.1; color:var(--pink-dark); font-weight:700;}
 
   /* ---------- bread slices ---------- */
   #breads{position:absolute; left:270px; right:200px; top:52%; bottom:26px; z-index:2;
@@ -98,6 +106,9 @@
   #musicBtn{position:fixed; top:20px; right:22px; z-index:6; font-size:16px;
     padding:9px 18px; background:var(--mint); color:var(--brown); border:3px solid var(--mint-dark);
     box-shadow:0 4px 0 var(--mint-dark);}
+  #dashBtn{position:fixed; top:20px; right:140px; z-index:6; font-size:16px;
+    padding:9px 18px; background:var(--cream); color:var(--brown); border:3px solid var(--pink-dark);
+    box-shadow:0 4px 0 var(--pink-dark);}
 
   /* ---------- modals ---------- */
   .overlay{position:fixed; inset:0; background:rgba(120,90,70,.35); z-index:10;
@@ -119,8 +130,9 @@
     color:var(--brown); background:#fff; border:3px solid var(--pink); border-radius:14px;
     padding:10px 12px; outline:none;}
   textarea:focus{border-color:var(--pink-dark);}
-  input[type=text]{width:100%; font-family:inherit; font-size:14px; color:var(--brown);
+  input{width:100%; font-family:inherit; font-size:14px; color:var(--brown);
     background:#fff; border:3px solid var(--mint); border-radius:12px; padding:8px 12px; outline:none;}
+  input:focus{border-color:var(--mint-dark);}
   .row{display:flex; gap:12px; justify-content:center; margin-top:16px; flex-wrap:wrap;}
   .btn.pink{background:var(--pink); color:#fff; border:3px solid var(--pink-dark);
     box-shadow:0 4px 0 var(--pink-dark); padding:9px 22px; font-size:15px;}
@@ -130,6 +142,7 @@
     box-shadow:0 4px 0 #e5d2bb; padding:9px 18px; font-size:14px;}
   #breadPreview{font-size:15px; font-weight:700; margin:4px 0 2px; word-break:break-word;}
   .hint{font-size:12.5px; color:#b8977a; margin-top:10px;}
+  .hint a{color:var(--pink-dark);}
 
   /* ---------- crumpled paper (bin history) ---------- */
   .card.paper{border:3px dashed #cbb391; transform:rotate(-1.5deg);
@@ -141,6 +154,47 @@
     border-bottom:1.5px dashed #e5d2bb; word-break:break-word;}
   #historyList li::before{content:'🍞 ';}
   #histEmpty{font-size:13px; color:#b8977a; margin:12px 0;}
+  .when{float:right; font-weight:500; font-size:11px; color:#c4a983; margin-left:8px;}
+  #histTabs{margin:2px 0 8px;}
+
+  /* ---------- subtasks ---------- */
+  .card.note{border-color:#e8cd78;}
+  .card.note .titlebar{background:#fff3c4; border-color:#e8cd78; color:#8a6a2f;}
+  .card.note .titlebar .dots span{border-color:#e8cd78;}
+  #subsTitle{font-size:15px; font-weight:700; word-break:break-word;}
+  #subsList{list-style:none; text-align:left; max-height:200px; overflow-y:auto; margin:10px 0 0; padding:0;}
+  #subsList li{display:flex; align-items:center; gap:8px; padding:6px 4px;
+    border-bottom:1.5px dashed #e5d2bb; font-size:13.5px; font-weight:700; color:var(--brown);}
+  #subsList li.done .stext{text-decoration:line-through; opacity:.5;}
+  #subsList .stext{flex:1; word-break:break-word;}
+  #subsList .stext a{color:var(--pink-dark);}
+  #subsList input[type=checkbox]{width:18px; height:18px; padding:0; border:none; flex:0 0 auto;
+    accent-color:var(--mint-dark); cursor:pointer;}
+  #subsList .sdel{background:none; border:none; color:#c4a983; cursor:pointer;
+    font-size:14px; font-weight:700; font-family:inherit;}
+  #subRow{display:flex; gap:8px; margin-top:10px;}
+  #subRow input{flex:1;}
+  .subtag{position:absolute; top:-9px; right:-9px; background:#fff3c4; border:2px solid #e8cd78;
+    border-radius:10px; font-size:10px; font-weight:700; color:#8a6a2f; padding:1px 7px; z-index:2;}
+
+  /* ---------- house rules note ---------- */
+  #rulesNote{position:absolute; top:17%; left:5%; z-index:4; background:#fff3c4;
+    border:3px solid #e8cd78; border-radius:10px; padding:10px 16px 12px; transform:rotate(-4deg);
+    cursor:pointer; box-shadow:0 5px 0 rgba(120,90,70,.2); font-weight:700; color:#8a6a2f;
+    font-size:14px; transition:transform .15s;}
+  #rulesNote:hover{transform:rotate(-1deg) scale(1.07);}
+  #rulesNote::before{content:''; position:absolute; top:-9px; left:50%;
+    transform:translateX(-50%) rotate(2deg); width:46px; height:14px; border-radius:2px;
+    background:rgba(191,227,210,.85); border:1.5px solid #9ecdb4;}
+  #rulesList{list-style:none; text-align:left; margin:8px 0 2px; padding:0;}
+  #rulesList li{font-size:13.5px; font-weight:700; color:var(--brown); padding:6px 4px;
+    border-bottom:1.5px dashed #e5d2bb;}
+  #rulesList li:last-child{border-bottom:none;}
+  @media (max-width:760px){
+    #rulesNote{font-size:10px; padding:6px 9px 7px; top:19%; left:8px; border-width:2px;}
+    #rulesNote::before{width:30px; height:10px; top:-7px;}
+    #rulesList li{font-size:12px;}
+  }
 
   /* ---------- music panel ---------- */
   #musicPanel{position:fixed; top:70px; right:22px; z-index:9; width:300px; display:none;}
@@ -161,7 +215,7 @@
 
   .deco{position:absolute; font-size:22px; opacity:.6; z-index:1;}
 
-  /* ---------- pomodoro clock ---------- */
+  /* ---------- pomodoro timer ---------- */
   #pomo{position:absolute; top:4%; left:calc(50% + 190px); width:150px; z-index:4; text-align:center;}
   #pomoPad.ringing{animation:ringring .16s infinite;}
   #pomoLabel{font-size:12px; font-weight:700; color:var(--pink-dark); margin-bottom:3px;}
@@ -203,7 +257,9 @@
     #toaster{width:118px; left:10px;}
     #toasterLabel{left:26px; bottom:calc(44% + 96px); font-size:11px;}
     #bin{width:76px; right:10px;}
-    #binBadge{right:12px; bottom:calc(44% + 78px); font-size:10px; padding:1px 8px;}
+    #placard{right:6px; bottom:calc(44% + 84px); padding:3px 9px 4px; border-width:2.5px;}
+    #placard .pl-title{font-size:8px;}
+    #placard .pl-count{font-size:15px;}
     #breads{left:10px; right:10px; top:calc(56% + 10px); bottom:76px; gap:12px; justify-content:center;}
     .bread{width:106px; height:96px; border-width:2.5px;}
     .bread .inner{inset:7px;}
@@ -211,6 +267,7 @@
     #empty{top:65%; font-size:13px; padding:0 30px;}
     #newTaskBtn{font-size:14px; padding:10px 18px; bottom:14px; left:14px;}
     #musicBtn{font-size:13px; padding:7px 14px; top:12px; right:14px;}
+    #dashBtn{font-size:13px; padding:7px 14px; top:12px; right:110px;}
     #musicPanel{top:58px; right:12px; width:min(300px, calc(100vw - 24px));}
     #playerWrap iframe{width:170px; height:96px;}
     #playerWrap{bottom:14px; right:14px;}
@@ -226,17 +283,41 @@
   <!-- window -->
   <svg id="window" viewBox="0 0 300 230">
     <rect x="10" y="10" width="280" height="190" rx="16" fill="var(--mint)" stroke="var(--mint-dark)" stroke-width="5"/>
-    <rect x="28" y="28" width="244" height="154" rx="8" fill="var(--sky)" stroke="var(--mint-dark)" stroke-width="4"/>
-    <circle cx="230" cy="66" r="22" fill="#ffe08a" stroke="#f0c96a" stroke-width="3"/>
-    <g fill="#ffffff" stroke="#dcebf2" stroke-width="2">
+    <rect id="sky" x="28" y="28" width="244" height="154" rx="8" fill="var(--sky)" stroke="var(--mint-dark)" stroke-width="4"/>
+    <circle id="sun" cx="230" cy="66" r="22" fill="#ffe08a" stroke="#f0c96a" stroke-width="3"/>
+    <g id="clouds" fill="#ffffff" stroke="#dcebf2" stroke-width="2">
       <ellipse cx="90" cy="70" rx="30" ry="14"/><ellipse cx="115" cy="62" rx="20" ry="11"/>
       <ellipse cx="165" cy="120" rx="26" ry="12"/>
+    </g>
+    <g id="nightSky" style="display:none">
+      <circle cx="228" cy="68" r="20" fill="#fff3c9"/>
+      <circle id="moonCut" cx="237" cy="60" r="16" fill="#33406b"/>
+      <circle cx="66" cy="58" r="2.5" fill="#fff" opacity=".9"/>
+      <circle cx="108" cy="88" r="2" fill="#fff" opacity=".8"/>
+      <circle cx="138" cy="52" r="2" fill="#fff" opacity=".7"/>
+      <circle cx="186" cy="124" r="2" fill="#fff" opacity=".8"/>
+      <circle cx="62" cy="128" r="2" fill="#fff" opacity=".7"/>
+      <circle cx="98" cy="140" r="1.6" fill="#fff" opacity=".6"/>
     </g>
     <line x1="150" y1="28" x2="150" y2="182" stroke="var(--mint-dark)" stroke-width="4"/>
     <line x1="28" y1="105" x2="272" y2="105" stroke="var(--mint-dark)" stroke-width="4"/>
     <rect x="0" y="198" width="300" height="16" rx="8" fill="var(--mint)" stroke="var(--mint-dark)" stroke-width="4"/>
-    <circle cx="60" cy="150" r="3.5" fill="#6b4b3e"/><circle cx="92" cy="150" r="3.5" fill="#6b4b3e"/>
-    <path d="M68 158 q8 7 16 0" stroke="#6b4b3e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <g id="faceDay">
+      <circle cx="60" cy="150" r="3.5" fill="#6b4b3e"/><circle cx="92" cy="150" r="3.5" fill="#6b4b3e"/>
+      <path d="M68 158 q8 7 16 0" stroke="#6b4b3e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </g>
+    <g id="faceSunset" style="display:none">
+      <path d="M56 150 q4 4 8 0" stroke="#6b4b3e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M88 150 q4 4 8 0" stroke="#6b4b3e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M70 159 q6 5 12 0" stroke="#6b4b3e" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </g>
+    <g id="faceNight" style="display:none">
+      <path d="M55 150 q5 5 10 0" stroke="#f5e9c8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M87 150 q5 5 10 0" stroke="#f5e9c8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M71 160 q5 4 10 0" stroke="#f5e9c8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <text x="103" y="138" font-size="11" fill="#f5e9c8" font-weight="700" font-family="'Baloo 2', cursive">z</text>
+      <text x="112" y="125" font-size="15" fill="#f5e9c8" font-weight="700" font-family="'Baloo 2', cursive">Z</text>
+    </g>
     <ellipse cx="50" cy="158" rx="6" ry="4" fill="#f5aeb6" opacity=".75"/>
     <ellipse cx="102" cy="158" rx="6" ry="4" fill="#f5aeb6" opacity=".75"/>
   </svg>
@@ -259,6 +340,8 @@
       <div id="pomoState">ready to focus ♡</div>
     </div>
   </div>
+
+  <div id="rulesNote">house rules 📌</div>
 
   <span class="deco" style="top:12%; left:12%">🌸</span>
   <span class="deco" style="top:26%; left:22%">💛</span>
@@ -283,8 +366,11 @@
     <rect x="152" y="150" width="18" height="8" rx="4" fill="#c9879a"/>
   </svg>
 
-  <!-- dustbin -->
-  <div id="binBadge">toasted ✕ <span id="binCount">0</span></div>
+  <!-- dustbin + placard -->
+  <div id="placard" title="see everything you've toasted">
+    <div class="pl-title">toasted today 🍞</div>
+    <div class="pl-count" id="todayCount">0</div>
+  </div>
   <svg id="bin" viewBox="0 0 130 130">
     <rect x="18" y="10" width="94" height="14" rx="7" fill="var(--mint)" stroke="var(--mint-dark)" stroke-width="3.5"/>
     <rect x="52" y="2" width="26" height="10" rx="5" fill="var(--mint)" stroke="var(--mint-dark)" stroke-width="3"/>
@@ -303,6 +389,7 @@
 
 <h1>toast <small>tiny tasks, freshly baked</small></h1>
 <button class="btn" id="newTaskBtn">🍞 + new task</button>
+<button class="btn" id="dashBtn">📊 pantry</button>
 <button class="btn" id="musicBtn">🎵 music</button>
 
 <!-- music panel -->
@@ -323,6 +410,93 @@
 <div id="playerWrap"><iframe id="player" src="" allow="autoplay; encrypted-media" title="music"></iframe></div>
 <button class="btn ghost" id="stopMusic">✕ stop music</button>
 
+<!-- login modal -->
+<div class="overlay" id="authModal">
+  <div class="card pink">
+    <div class="titlebar">your pantry awaits 🍞 <span class="dots"><span></span><span></span></span></div>
+    <div class="body">
+      <div id="avChoice">
+        <div style="font-size:14px; font-weight:700;">sign in to save your bread across devices ♡</div>
+        <div class="row"><button class="btn pink" id="chPass">✉️ email + password</button></div>
+        <div class="row"><button class="btn mint" id="chMagic">🪄 magic link</button></div>
+        <div class="row"><button class="btn ghost" id="chGoogle">continue with Google 🌈</button></div>
+      </div>
+      <div id="avPass" style="display:none">
+        <input type="email" id="authEmail" placeholder="your email" autocomplete="email">
+        <div style="height:8px"></div>
+        <input type="password" id="authPass" placeholder="password" autocomplete="current-password">
+        <div class="row">
+          <button class="btn ghost" id="backPass">← back</button>
+          <button class="btn pink" id="btnLogin">log in</button>
+          <button class="btn mint" id="btnSignup">sign up</button>
+        </div>
+      </div>
+      <div id="avMagic" style="display:none">
+        <input type="email" id="magicEmail" placeholder="your email" autocomplete="email">
+        <div class="row">
+          <button class="btn ghost" id="backMagic">← back</button>
+          <button class="btn mint" id="btnMagic">send my magic link 🪄</button>
+        </div>
+      </div>
+      <div class="hint" id="authMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- feedback modal -->
+<div class="overlay" id="fbModal">
+  <div class="card pink">
+    <div class="titlebar">enjoying toast? 💌 <span class="dots"><span></span><span></span></span></div>
+    <div class="body" id="fbBody">
+      <div style="font-size:14px; font-weight:700; margin-bottom:10px;">you've been busy baking! tell us what you think — anything at all ♡</div>
+      <textarea id="fbText" maxlength="2000" placeholder="what do you love? what's missing? what's burnt?"></textarea>
+      <div class="row">
+        <button class="btn ghost" id="fbSkip">maybe later</button>
+        <button class="btn pink" id="fbSend">send it 💌</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- house rules modal -->
+<div class="overlay" id="rulesModal">
+  <div class="card">
+    <div class="titlebar">house rules 🍞 <span class="dots"><span></span><span></span></span></div>
+    <div class="body">
+      <ul id="rulesList">
+        <li>🍞 every task you bake becomes a slice of bread on the counter</li>
+        <li>♨ finished? click your bread and toast it</li>
+        <li>🗑 toasted breads hop into the dustbin</li>
+        <li>👀 click the dustbin anytime to see everything you've toasted — today, this week, or this month</li>
+        <li>✨ log in and your kitchen follows you to any device</li>
+      </ul>
+      <div class="row"><button class="btn pink" id="rulesClose">got it ♡</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- bin history modal -->
+<div class="overlay" id="binModal">
+  <div class="card paper">
+    <div class="titlebar">the crumb bin 🗑 <span class="dots"><span></span><span></span></span></div>
+    <div class="body">
+      <div class="modeRow" id="histTabs">
+        <button class="mode active" data-f="today">today</button>
+        <button class="mode" data-f="week">week</button>
+        <button class="mode" data-f="month">month</button>
+        <button class="mode" data-f="all">all</button>
+      </div>
+      <div id="histCount"></div>
+      <div id="histEmpty">nothing toasted yet… get baking! 🍞</div>
+      <ul id="historyList"></ul>
+      <div class="row">
+        <button class="btn ghost" id="binClear">empty the bin 🧹</button>
+        <button class="btn mint" id="binClose">okay ♡</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- new task modal -->
 <div class="overlay" id="newModal">
   <div class="card pink">
@@ -337,18 +511,19 @@
   </div>
 </div>
 
-<!-- bin history modal -->
-<div class="overlay" id="binModal">
-  <div class="card paper">
-    <div class="titlebar">the crumb bin 🗑 <span class="dots"><span></span><span></span></span></div>
+<!-- subtasks modal -->
+<div class="overlay" id="subsModal">
+  <div class="card note">
+    <div class="titlebar">little steps 🗒 <span class="dots"><span></span><span></span></span></div>
     <div class="body">
-      <div id="histCount"></div>
-      <div id="histEmpty">nothing toasted yet… get baking! 🍞</div>
-      <ul id="historyList"></ul>
-      <div class="row">
-        <button class="btn ghost" id="binClear">empty the bin 🧹</button>
-        <button class="btn mint" id="binClose">okay ♡</button>
+      <div id="subsTitle"></div>
+      <div class="hint" style="margin-top:2px;">tiny steps for this slice — links welcome ♡</div>
+      <ul id="subsList"></ul>
+      <div id="subRow">
+        <input type="text" id="subInput" maxlength="200" placeholder="add a step or paste a link…">
+        <button class="btn mint" id="subAdd">add</button>
       </div>
+      <div class="row"><button class="btn pink" id="subsDone">done ♡</button></div>
     </div>
   </div>
 </div>
@@ -359,9 +534,9 @@
     <div class="titlebar">this little slice… <span class="dots"><span></span><span></span></span></div>
     <div class="body">
       <div id="breadPreview"></div>
-      <div class="hint">done with it? toast it and it hops into the bin!</div>
+      <div class="hint">toast it when it's done, break it into little steps, or close this to keep it ♡</div>
       <div class="row">
-        <button class="btn mint" id="keepBread">keep it 🤍</button>
+        <button class="btn mint" id="addSubs">add subtasks 🗒</button>
         <button class="btn pink" id="toastBread">toast it! ♨🍞</button>
       </div>
     </div>
@@ -370,15 +545,26 @@
 
 <script>
 const $ = s => document.querySelector(s);
-let tasks = [], toastedCount = 0, history = [], current = null;
+const CFG = window.TOAST_CONFIG || {};
+const sb = (CFG.SUPABASE_URL || '').startsWith('http')
+  ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
 
-// ---- persistence (safe if storage unavailable) ----
-try {
-  tasks = JSON.parse(localStorage.getItem('toast.tasks') || '[]');
-  toastedCount = +(localStorage.getItem('toast.count') || 0);
-  history = JSON.parse(localStorage.getItem('toast.history') || '[]');
-} catch(e) {}
-function save(){
+let cloud = false, user = null;
+let tasks = [], history = [], toastedCount = 0, current = null;
+
+const prefOn = k => { try { return localStorage.getItem(k) !== 'off'; } catch(e){ return true; } };
+
+// ---- guest persistence (localStorage) ----
+function loadLocal(){
+  try {
+    tasks = JSON.parse(localStorage.getItem('toast.tasks') || '[]');
+    toastedCount = +(localStorage.getItem('toast.count') || 0);
+    history = JSON.parse(localStorage.getItem('toast.history') || '[]');
+  } catch(e) {}
+  history = history.map(h => typeof h === 'string' ? {text: h, at: 0} : h);
+}
+function saveLocal(){
+  if(cloud) return;
   try {
     localStorage.setItem('toast.tasks', JSON.stringify(tasks));
     localStorage.setItem('toast.count', toastedCount);
@@ -386,13 +572,102 @@ function save(){
   } catch(e) {}
 }
 
+// ---- cloud persistence (Supabase) ----
+async function loadCloud(){
+  const t = await sb.from('tasks').select('id,text,subs').order('created_at');
+  const h = await sb.from('toasts').select('text,toasted_at', {count:'exact'})
+    .order('toasted_at', {ascending:false}).limit(500);
+  tasks = (t.data || []).map(r => ({id: r.id, text: r.text, subs: Array.isArray(r.subs) ? r.subs : []}));
+  history = (h.data || []).map(r => ({text: r.text, at: +new Date(r.toasted_at)}));
+  toastedCount = h.count ?? history.length;
+}
+async function enterCloud(u){
+  user = u; cloud = true;
+  $('#authModal').classList.remove('open');
+  // snapshot any guest data before loading cloud
+  let lt = [], lh = [];
+  try {
+    lt = JSON.parse(localStorage.getItem('toast.tasks') || '[]');
+    lh = (JSON.parse(localStorage.getItem('toast.history') || '[]'))
+      .map(h => typeof h === 'string' ? {text: h, at: 0} : h);
+  } catch(e) {}
+  await loadCloud();
+  // first login on this device? bring their guest bread along
+  if(!tasks.length && !history.length && (lt.length || lh.length)){
+    try {
+      if(lt.length) await sb.from('tasks').insert(lt.map(x => ({user_id: u.id, text: x.text, subs: x.subs || []})));
+      if(lh.length) await sb.from('toasts').insert(lh.filter(h => h.text).map(h => ({
+        user_id: u.id, text: h.text,
+        toasted_at: new Date(h.at || Date.now()).toISOString()
+      })));
+      localStorage.removeItem('toast.tasks');
+      localStorage.removeItem('toast.history');
+      localStorage.removeItem('toast.count');
+      await loadCloud();
+    } catch(e) {}
+  }
+  render();
+  if(localStorage.getItem('toast.wantdash')){
+    localStorage.removeItem('toast.wantdash');
+    location.href = 'dashboard.html';
+  }
+}
+
+// ---- auth ----
+function authMsg(m){ $('#authMsg').textContent = m; }
+function authView(v){
+  ['avChoice','avPass','avMagic'].forEach(id => $('#'+id).style.display = id === v ? '' : 'none');
+  authMsg('');
+}
+if(sb){
+  const redirect = location.href.split('#')[0].split('?')[0];
+  $('#chPass').onclick = () => authView('avPass');
+  $('#chMagic').onclick = () => authView('avMagic');
+  $('#backPass').onclick = () => authView('avChoice');
+  $('#backMagic').onclick = () => authView('avChoice');
+  $('#chGoogle').onclick = () => sb.auth.signInWithOAuth({provider: 'google', options: {redirectTo: redirect}});
+  $('#btnLogin').onclick = async () => {
+    const email = $('#authEmail').value.trim(), pass = $('#authPass').value;
+    if(!email || !pass) return authMsg('need your email and password 🥺');
+    const {error} = await sb.auth.signInWithPassword({email, password: pass});
+    if(error) authMsg(error.message.toLowerCase() + ' 🥲');
+  };
+  $('#btnSignup').onclick = async () => {
+    const email = $('#authEmail').value.trim(), pass = $('#authPass').value;
+    if(!email || !pass) return authMsg('pick an email and a password to sign up ♡');
+    if(pass.length < 6) return authMsg('password needs 6+ characters 🥺');
+    const {data, error} = await sb.auth.signUp({email, password: pass});
+    if(error) return authMsg(error.message.toLowerCase() + ' 🥲');
+    if(!data.session) authMsg('almost there — check your inbox to confirm your email 💌');
+  };
+  $('#btnMagic').onclick = async () => {
+    const email = $('#magicEmail').value.trim();
+    if(!email) return authMsg('type your email first, then the magic 🪄');
+    const {error} = await sb.auth.signInWithOtp({email, options: {emailRedirectTo: redirect}});
+    authMsg(error ? error.message.toLowerCase() + ' 🥲' : 'magic link sent — check your inbox 🪄💌');
+  };
+}
+$('#dashBtn').onclick = () => {
+  if(cloud || !sb) location.href = 'dashboard.html';
+  else {
+    try { localStorage.setItem('toast.wantdash', '1'); } catch(e) {}
+    authView('avChoice');
+    $('#authModal').classList.add('open');
+  }
+};
+
 // ---- render ----
+function countToday(){
+  const cut = new Date(); cut.setHours(0,0,0,0);
+  return history.filter(h => (h.at || 0) >= cut.getTime()).length;
+}
+function updatePlacard(){ $('#todayCount').textContent = countToday(); }
 function render(){
   const area = $('#breads');
   area.innerHTML = '';
   tasks.forEach(t => area.appendChild(makeBread(t)));
   $('#empty').style.display = tasks.length ? 'none' : 'block';
-  $('#binCount').textContent = toastedCount;
+  updatePlacard();
 }
 function makeBread(t){
   const d = document.createElement('div');
@@ -403,6 +678,13 @@ function makeBread(t){
   txt.className = 'btext';
   txt.textContent = t.text;
   d.appendChild(txt);
+  if(t.subs && t.subs.length){
+    const done = t.subs.filter(s => s.done).length;
+    const tag = document.createElement('span');
+    tag.className = 'subtag';
+    tag.textContent = `🗒 ${done}/${t.subs.length}`;
+    d.appendChild(tag);
+  }
   d.onclick = () => { current = {t, el:d}; $('#breadPreview').textContent = '“' + t.text + '”'; $('#breadModal').classList.add('open'); };
   return d;
 }
@@ -412,17 +694,82 @@ $('#newTaskBtn').onclick = () => { $('#newModal').classList.add('open'); $('#tas
 $('#cancelNew').onclick = () => $('#newModal').classList.remove('open');
 $('#addTask').onclick = addTask;
 $('#taskInput').addEventListener('keydown', e => { if(e.key==='Enter'){ e.preventDefault(); addTask(); } });
-function addTask(){
+async function addTask(){
   const text = $('#taskInput').value.trim();
   if(!text) return;
-  tasks.push({id: Date.now(), text});
-  save(); render();
   $('#newModal').classList.remove('open');
+  if(cloud){
+    const {data, error} = await sb.from('tasks').insert({user_id: user.id, text}).select().single();
+    tasks.push({id: error ? Date.now() : data.id, text});
+  } else {
+    tasks.push({id: Date.now(), text});
+    saveLocal();
+  }
+  render();
 }
 
 // ---- bread modal ----
-$('#keepBread').onclick = () => $('#breadModal').classList.remove('open');
 $('#toastBread').onclick = () => { $('#breadModal').classList.remove('open'); if(current) runToast(current); };
+
+// ---- subtasks ----
+let subsTask = null;
+function persistSubs(){
+  if(cloud) sb.from('tasks').update({subs: subsTask.subs}).eq('id', subsTask.id).then(()=>{}, ()=>{});
+  else saveLocal();
+}
+function linkifyInto(el, text){
+  const re = /(https?:\/\/[^\s]+)/g;
+  let last = 0, m;
+  while((m = re.exec(text))){
+    if(m.index > last) el.appendChild(document.createTextNode(text.slice(last, m.index)));
+    const a = document.createElement('a');
+    a.href = m[0]; a.target = '_blank'; a.rel = 'noopener';
+    const label = m[0].replace(/^https?:\/\//, '');
+    a.textContent = label.length > 42 ? label.slice(0, 42) + '…' : label;
+    el.appendChild(a);
+    last = m.index + m[0].length;
+  }
+  if(last < text.length) el.appendChild(document.createTextNode(text.slice(last)));
+}
+function renderSubs(){
+  $('#subsTitle').textContent = '“' + subsTask.text + '”';
+  const ul = $('#subsList');
+  ul.innerHTML = '';
+  (subsTask.subs || []).forEach((s, i) => {
+    const li = document.createElement('li');
+    if(s.done) li.className = 'done';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = !!s.done;
+    cb.onchange = () => { s.done = cb.checked; persistSubs(); renderSubs(); render(); };
+    const sp = document.createElement('span');
+    sp.className = 'stext';
+    linkifyInto(sp, s.text);
+    const del = document.createElement('button');
+    del.className = 'sdel'; del.textContent = '✕'; del.title = 'remove';
+    del.onclick = () => { subsTask.subs.splice(i, 1); persistSubs(); renderSubs(); render(); };
+    li.append(cb, sp, del);
+    ul.appendChild(li);
+  });
+}
+function addSub(){
+  const v = $('#subInput').value.trim();
+  if(!v) return;
+  subsTask.subs.push({text: v, done: false});
+  $('#subInput').value = '';
+  persistSubs(); renderSubs(); render();
+}
+$('#addSubs').onclick = () => {
+  if(!current) return;
+  $('#breadModal').classList.remove('open');
+  subsTask = current.t;
+  subsTask.subs = subsTask.subs || [];
+  renderSubs();
+  $('#subsModal').classList.add('open');
+  setTimeout(() => $('#subInput').focus(), 60);
+};
+$('#subAdd').onclick = addSub;
+$('#subInput').addEventListener('keydown', e => { if(e.key === 'Enter') addSub(); });
+$('#subsDone').onclick = () => $('#subsModal').classList.remove('open');
 document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
 
 // ---- toast sequence ----
@@ -432,7 +779,6 @@ function runToast({t, el}){
   const tr = toaster.getBoundingClientRect();
   el.style.visibility = 'hidden';
 
-  // fly to toaster
   const clone = el.cloneNode(true);
   clone.style.visibility = 'visible';
   Object.assign(clone.style, {position:'fixed', left:r.left+'px', top:r.top+'px',
@@ -450,7 +796,9 @@ function runToast({t, el}){
     toaster.classList.add('toasting');
     $('#toasterLabel').classList.add('show');
     tasks = tasks.filter(x => x.id !== t.id);
-    save(); render();
+    if(cloud) sb.from('tasks').delete().eq('id', t.id).then(()=>{}, ()=>{});
+    else saveLocal();
+    render();
   }, 700);
 
   setTimeout(() => {
@@ -484,10 +832,12 @@ function popToast(text){
     mini.remove();
     $('#bin').classList.remove('wobble');
     toastedCount++;
-    history.unshift(text);
-    if(history.length > 300) history.length = 300;
-    save();
-    $('#binCount').textContent = toastedCount;
+    history.unshift({text, at: Date.now()});
+    if(history.length > 500) history.length = 500;
+    if(cloud) sb.from('toasts').insert({user_id: user.id, text}).then(()=>{}, ()=>{});
+    else saveLocal();
+    updatePlacard();
+    milestone();
     const p = document.createElement('div');
     p.className = 'floatplus'; p.textContent = '+1 ♡';
     const b = $('#bin').getBoundingClientRect();
@@ -498,27 +848,79 @@ function popToast(text){
   }, 1150);
 }
 
+// ---- feedback (after 3 toasts or pomodoros, shown once) ----
+function milestone(){
+  try {
+    const n = (+localStorage.getItem('toast.actions') || 0) + 1;
+    localStorage.setItem('toast.actions', n);
+    if(n >= 3 && !localStorage.getItem('toast.fbshown')){
+      localStorage.setItem('toast.fbshown', '1');
+      setTimeout(() => $('#fbModal').classList.add('open'), 1500);
+    }
+  } catch(e) {}
+}
+$('#fbSkip').onclick = () => $('#fbModal').classList.remove('open');
+$('#fbSend').onclick = async () => {
+  const m = $('#fbText').value.trim();
+  if(!m) return;
+  if(sb){
+    try { await sb.from('feedback').insert({message: m, user_id: user ? user.id : null}); } catch(e) {}
+  }
+  $('#fbBody').innerHTML = '<div style="font-size:15px;font-weight:700;padding:10px 0;">thank you! your note is in our recipe book 💌🍞</div>';
+  setTimeout(() => $('#fbModal').classList.remove('open'), 1800);
+};
+
 // ---- bin history ----
 $('#bin').style.cursor = 'pointer';
+let histFilter = 'today';
 function renderHistory(){
-  const n = toastedCount;
-  $('#histCount').textContent = `you've toasted ${n} task${n === 1 ? '' : 's'} ♡`;
+  const now = new Date();
+  const cuts = {
+    today: new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(),
+    week: Date.now() - 7 * 864e5,
+    month: Date.now() - 30 * 864e5,
+    all: -1
+  };
+  const cut = cuts[histFilter];
+  const items = history.filter(h => cut < 0 || (h.at || 0) >= cut);
+  const label = {today:'today', week:'this week', month:'this month', all:'all time'}[histFilter];
+  $('#histCount').textContent = `${items.length} task${items.length === 1 ? '' : 's'} toasted ${label} ♡`;
   const ul = $('#historyList');
   ul.innerHTML = '';
-  history.forEach(h => {
+  items.forEach(h => {
     const li = document.createElement('li');
-    li.textContent = h;
+    li.textContent = h.text;
+    if(h.at){
+      const w = document.createElement('span');
+      w.className = 'when';
+      w.textContent = new Date(h.at).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+      li.appendChild(w);
+    }
     ul.appendChild(li);
   });
-  $('#histEmpty').style.display = history.length ? 'none' : 'block';
+  $('#histEmpty').style.display = items.length ? 'none' : 'block';
 }
-$('#bin').onclick = () => { renderHistory(); $('#binModal').classList.add('open'); };
+document.querySelectorAll('#histTabs .mode').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#histTabs .mode').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  histFilter = b.dataset.f;
+  renderHistory();
+});
+function openBin(){ renderHistory(); $('#binModal').classList.add('open'); }
+$('#bin').onclick = openBin;
+$('#placard').onclick = openBin;
 $('#binClose').onclick = () => $('#binModal').classList.remove('open');
 $('#binClear').onclick = () => {
-  history = []; toastedCount = 0; save();
-  $('#binCount').textContent = 0;
+  history = []; toastedCount = 0;
+  if(cloud) sb.from('toasts').delete().eq('user_id', user.id).then(()=>{}, ()=>{});
+  else saveLocal();
+  updatePlacard();
   renderHistory();
 };
+
+// ---- house rules ----
+$('#rulesNote').onclick = () => $('#rulesModal').classList.add('open');
+$('#rulesClose').onclick = () => $('#rulesModal').classList.remove('open');
 
 // ---- music ----
 $('#musicBtn').onclick = () => $('#musicPanel').classList.toggle('open');
@@ -546,8 +948,8 @@ let pomoSecs = 1500, pomoLeft = 1500, pomoTimer = null;
 const fmt = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
 function pomoRender(){ $('#pomoTime').textContent = fmt(pomoLeft); }
 
-document.querySelectorAll('.mode').forEach(b => b.onclick = () => {
-  document.querySelectorAll('.mode').forEach(x => x.classList.remove('active'));
+document.querySelectorAll('#pomoPad .mode').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#pomoPad .mode').forEach(x => x.classList.remove('active'));
   b.classList.add('active');
   pomoSecs = +b.dataset.secs;
   stopPomo();
@@ -574,6 +976,10 @@ function startPomo(){
     if(pomoLeft <= 0) finishPomo();
   }, 1000);
   $('#pomoState').textContent = 'tick tock… ♪';
+  try {
+    if('Notification' in window && Notification.permission === 'default')
+      Notification.requestPermission();
+  } catch(e) {}
 }
 function pausePomo(){
   if(!pomoTimer) return;
@@ -590,27 +996,100 @@ function finishPomo(){
   document.title = "time's up! 🍞";
   $('#pomoState').textContent = "ding ding! time's up ♡";
   $('#pomoPad').classList.add('ringing');
-  ding();
+  notifyDone();
+  milestone();
   setTimeout(() => $('#pomoPad').classList.remove('ringing'), 2400);
 }
-function ding(){
+function popSound(){
+  if(!prefOn('toast.sound')) return;
   try {
     const ac = new (window.AudioContext || window.webkitAudioContext)();
-    for(let i = 0; i < 3; i++){
-      const t = ac.currentTime + i * 0.4;
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.type = 'triangle'; o.frequency.value = 880;
-      g.gain.setValueAtTime(0.001, t);
-      g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      o.connect(g); g.connect(ac.destination);
-      o.start(t); o.stop(t + 0.4);
-    }
+    const t0 = ac.currentTime;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'square';
+    o.frequency.setValueAtTime(160, t0);
+    o.frequency.exponentialRampToValueAtTime(1100, t0 + 0.12);
+    g.gain.setValueAtTime(0.25, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+    o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + 0.25);
+    [[880, 0.28], [1174.7, 0.42]].forEach(([f, d]) => {
+      const o2 = ac.createOscillator(), g2 = ac.createGain();
+      o2.type = 'triangle'; o2.frequency.value = f;
+      g2.gain.setValueAtTime(0.001, t0 + d);
+      g2.gain.exponentialRampToValueAtTime(0.22, t0 + d + 0.02);
+      g2.gain.exponentialRampToValueAtTime(0.001, t0 + d + 0.35);
+      o2.connect(g2); g2.connect(ac.destination); o2.start(t0 + d); o2.stop(t0 + d + 0.4);
+    });
   } catch(e) {}
 }
+let titleFlash = null;
+function notifyDone(){
+  popSound();
+  if(!prefOn('toast.notif')) return;
+  const mode = document.querySelector('#pomoPad .mode.active');
+  const msg = (mode ? mode.dataset.label : 'timer') + ' is done — your toast popped! 🍞';
+  if(document.hidden){
+    try {
+      if('Notification' in window && Notification.permission === 'granted')
+        new Notification('toast 🍞', {body: msg});
+    } catch(e) {}
+    if(!titleFlash){
+      let on = false;
+      titleFlash = setInterval(() => { document.title = (on = !on) ? "🍞 TIME'S UP!" : 'toast'; }, 900);
+    }
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden && titleFlash){
+    clearInterval(titleFlash); titleFlash = null;
+    document.title = "time's up! 🍞";
+  }
+});
 pomoRender();
 
-render();
+// ---- day / sunset / night window (uses the visitor's device clock) ----
+function updateSky(){
+  const h = new Date().getHours();
+  const sky = $('#sky'), sun = $('#sun'), clouds = $('#clouds'), night = $('#nightSky');
+  const faces = {faceDay:'none', faceSunset:'none', faceNight:'none'};
+  if(h >= 6 && h < 17) faces.faceDay = '';
+  else if(h >= 17 && h < 20) faces.faceSunset = '';
+  else faces.faceNight = '';
+  Object.keys(faces).forEach(k => $('#' + k).style.display = faces[k]);
+  if(h >= 6 && h < 17){            // ☀️ day
+    sky.setAttribute('fill', '#cdeaf7');
+    sun.style.display = '';
+    sun.setAttribute('fill', '#ffe08a'); sun.setAttribute('stroke', '#f0c96a'); sun.setAttribute('cy', '66');
+    clouds.style.display = '';
+    clouds.setAttribute('fill', '#ffffff'); clouds.setAttribute('stroke', '#dcebf2');
+    night.style.display = 'none';
+  } else if(h >= 17 && h < 20){    // 🌇 sunset
+    sky.setAttribute('fill', '#ffd2ae');
+    sun.style.display = '';
+    sun.setAttribute('fill', '#ff9e6d'); sun.setAttribute('stroke', '#e8834f'); sun.setAttribute('cy', '92');
+    clouds.style.display = '';
+    clouds.setAttribute('fill', '#fff0e0'); clouds.setAttribute('stroke', '#f3d8c2');
+    night.style.display = 'none';
+  } else {                         // 🌙 night
+    sky.setAttribute('fill', '#33406b');
+    sun.style.display = 'none';
+    clouds.style.display = 'none';
+    $('#moonCut').setAttribute('fill', '#33406b');
+    night.style.display = '';
+  }
+}
+updateSky();
+setInterval(updateSky, 60000);
+
+// ---- boot ----
+(async function boot(){
+  loadLocal();
+  render();
+  if(!sb) return; // no Supabase configured → localStorage mode
+  const {data:{session}} = await sb.auth.getSession();
+  if(session) enterCloud(session.user);
+  sb.auth.onAuthStateChange((_e, s) => { if(s && !cloud) enterCloud(s.user); });
+})();
 </script>
 </body>
 </html>

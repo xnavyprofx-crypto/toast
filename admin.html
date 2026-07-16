@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>toast 🍞 — owner's pantry</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+  :root{
+    --wall:#fdf3e7; --pink:#f6c6cf; --pink-dark:#e79aa9; --mint:#bfe3d2; --mint-dark:#8cc9ae;
+    --cream:#fff8ec; --brown:#7a5a44; --soft:#b8977a; --gold:#e8cd78;
+  }
+  *{box-sizing:border-box; margin:0;}
+  body{font-family:'Baloo 2','Comic Sans MS',cursive; color:var(--brown);
+    background:var(--wall); background-image:radial-gradient(#f6e2cc 8%, transparent 9%);
+    background-size:46px 46px; min-height:100vh; padding:28px 24px;}
+  #wrap{max-width:860px; margin:0 auto;}
+  h2{font-size:26px; color:var(--pink-dark); text-shadow:1.5px 1.5px 0 #fff;}
+  .sub{font-size:14px; color:var(--soft); margin-bottom:20px;}
+  .sub a{color:var(--pink-dark); font-weight:700;}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px; margin-bottom:20px;}
+  .stat{background:var(--cream); border:3px solid var(--gold); border-radius:18px;
+    padding:14px 16px; box-shadow:0 5px 0 rgba(120,90,70,.15); text-align:center;}
+  .stat .num{font-size:30px; font-weight:700; color:var(--pink-dark); line-height:1.1;}
+  .stat .lbl{font-size:12.5px; color:var(--soft); font-weight:700;}
+
+  .panel{background:var(--cream); border:3px solid var(--mint-dark); border-radius:20px;
+    padding:18px 20px; box-shadow:0 5px 0 rgba(120,90,70,.15); margin-bottom:20px;}
+  .panel h3{font-size:16px; margin-bottom:12px;}
+
+  .fb{background:#fffdf7; border:2.5px dashed #cbb391; border-radius:14px;
+    padding:12px 14px; margin-bottom:12px;}
+  .fb .msg{font-size:14px; font-weight:700; white-space:pre-wrap; word-break:break-word;}
+  .fb .meta{font-size:11px; color:var(--soft); margin-top:6px;}
+
+  #blocked{display:none; text-align:center; padding:80px 20px;}
+  #blocked .big{font-size:44px;}
+  #blocked .t{font-size:20px; font-weight:700; color:var(--pink-dark); margin-top:10px;}
+  #blocked .d{font-size:14px; color:var(--soft); margin-top:6px;}
+  #content{display:none;}
+  #loading{text-align:center; padding:80px 20px; font-size:16px; color:var(--soft);}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="loading">warming up the oven… ♨</div>
+
+  <div id="blocked">
+    <div class="big">🥐🔒</div>
+    <div class="t">this pantry is owner-only</div>
+    <div class="d">nothing to see here — <a href="index.html" style="color:var(--pink-dark)">back to the kitchen</a></div>
+  </div>
+
+  <div id="content">
+    <h2>owner's pantry 🔑</h2>
+    <div class="sub">how toast is doing — <a href="dashboard.html">back to my dashboard</a></div>
+
+    <div class="cards">
+      <div class="stat"><div class="num" id="aUsers">–</div><div class="lbl">total bakers</div></div>
+      <div class="stat"><div class="num" id="aToasts">–</div><div class="lbl">tasks toasted (all)</div></div>
+      <div class="stat"><div class="num" id="aToday">–</div><div class="lbl">toasted today</div></div>
+      <div class="stat"><div class="num" id="aWeek">–</div><div class="lbl">this week</div></div>
+      <div class="stat"><div class="num" id="aFb">–</div><div class="lbl">feedback notes</div></div>
+    </div>
+
+    <div class="panel">
+      <h3>the suggestion box 💌</h3>
+      <div id="fbList"></div>
+      <div id="fbEmpty" style="font-size:13px; color:var(--soft);">no feedback yet — it appears here the moment someone writes in.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const CFG = window.TOAST_CONFIG || {};
+const sb = (CFG.SUPABASE_URL || '').startsWith('http')
+  ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
+
+function block(){ $('#loading').style.display='none'; $('#blocked').style.display='block'; }
+
+(async function boot(){
+  if(!sb) return block();
+  const {data:{session}} = await sb.auth.getSession();
+  if(!session || session.user.email !== CFG.ADMIN_EMAIL) return block();
+
+  const {data: stats, error} = await sb.rpc('admin_stats');
+  if(error) return block();
+
+  $('#aUsers').textContent = stats.users;
+  $('#aToasts').textContent = stats.toasts_total;
+  $('#aToday').textContent = stats.toasts_today;
+  $('#aWeek').textContent = stats.toasts_week;
+  $('#aFb').textContent = stats.feedback;
+
+  const {data: fb} = await sb.from('feedback')
+    .select('message,created_at').order('created_at', {ascending:false}).limit(200);
+  const list = $('#fbList');
+  (fb || []).forEach(f => {
+    const d = document.createElement('div');
+    d.className = 'fb';
+    const msg = document.createElement('div');
+    msg.className = 'msg'; msg.textContent = f.message;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = new Date(f.created_at).toLocaleString();
+    d.appendChild(msg); d.appendChild(meta);
+    list.appendChild(d);
+  });
+  if(fb && fb.length) $('#fbEmpty').style.display = 'none';
+
+  $('#loading').style.display = 'none';
+  $('#content').style.display = 'block';
+})();
+</script>
+</body>
+</html>
