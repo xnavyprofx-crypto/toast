@@ -702,8 +702,10 @@ $('#dashBtn').onclick = () => {
 
 // ---- render ----
 function countToday(){
+  // counts only what's "in the bin" — emptying the bin resets this to 0
+  // (the pantry dashboard still keeps the full record)
   const cut = new Date(); cut.setHours(0,0,0,0);
-  return history.filter(h => (h.at || 0) >= cut.getTime()).length;
+  return history.filter(h => (h.at || 0) >= cut.getTime() && (h.at || 0) > binClearedAt).length;
 }
 function updatePlacard(){ $('#todayCount').textContent = countToday(); }
 function render(){
@@ -999,6 +1001,7 @@ $('#binClear').onclick = () => {
   binClearedAt = Date.now();
   try { localStorage.setItem('toast.bincleared', binClearedAt); } catch(e) {}
   renderHistory();
+  updatePlacard();
 };
 
 // ---- house rules ----

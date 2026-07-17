@@ -74,11 +74,17 @@
   .bar .val{font-size:13px; color:var(--brown); font-weight:700; margin-bottom:26px;}
   .bar.today .fill{background:var(--pink); border-color:var(--pink-dark);}
 
-  #recent > li{list-style:none; font-size:13.5px; font-weight:700; padding:7px 4px;
+  .dayhead{display:flex; justify-content:space-between; align-items:baseline;
+    font-size:13.5px; font-weight:700; color:var(--pink-dark);
+    margin:14px 0 2px; padding-bottom:3px; border-bottom:2.5px solid var(--mint);}
+  .dayhead:first-child{margin-top:0;}
+  .dayhead .dcount{font-size:11px; color:var(--soft);}
+  .daylist{list-style:none; margin:0; padding:0;}
+  .daylist > li{font-size:13.5px; font-weight:700; padding:7px 4px;
     border-bottom:1.5px dashed #e5d2bb;}
-  #recent > li:last-child{border-bottom:none;}
-  #recent > li::before{content:'🍞 ';}
-  #recent > li.hasSubs{cursor:pointer;}
+  .daylist > li:last-child{border-bottom:none;}
+  .daylist > li::before{content:'🍞 ';}
+  .daylist > li.hasSubs{cursor:pointer;}
   .caret{display:inline-block; font-size:10px; margin-right:4px; transition:transform .15s; color:var(--soft);}
   li.open .caret{transform:rotate(90deg);}
   .sublist{list-style:none; margin:5px 0 2px 26px; padding:0; display:none;}
@@ -190,7 +196,7 @@
 
       <div class="panel">
         <h3>fresh out of the toaster ♨</h3>
-        <ul id="recent"></ul>
+        <div id="recent"></div>
         <div class="mocknote" id="emptyRecent">nothing toasted yet — go bake something! 🍞</div>
       </div>
 
@@ -368,10 +374,33 @@ function renderStats(name){
     chart.appendChild(bar);
   });
 
-  // recent list (with subtask dropdowns)
-  const ul = $('#recent');
-  ul.innerHTML = '';
-  rows.slice(0, 8).forEach(r => {
+  // recent list, grouped by date (with subtask dropdowns)
+  const wrap = $('#recent');
+  wrap.innerHTML = '';
+  const todayKey = new Date().toDateString();
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const yestKey = y.toDateString();
+  let curKey = null, ul = null;
+  rows.slice(0, 100).forEach(r => {
+    const k = new Date(r.at).toDateString();
+    if(k !== curKey){
+      curKey = k;
+      const head = document.createElement('div');
+      head.className = 'dayhead';
+      const lab = document.createElement('span');
+      lab.textContent = k === todayKey ? 'today' : k === yestKey ? 'yesterday'
+        : new Date(r.at).toLocaleDateString(undefined,
+          {weekday:'short', month:'short', day:'numeric'}).toLowerCase();
+      const n = rows.filter(x => new Date(x.at).toDateString() === k).length;
+      const dc = document.createElement('span');
+      dc.className = 'dcount';
+      dc.textContent = `${n} toasted 🍞`;
+      head.append(lab, dc);
+      wrap.appendChild(head);
+      ul = document.createElement('ul');
+      ul.className = 'daylist';
+      wrap.appendChild(ul);
+    }
     const li = document.createElement('li');
     const hasSubs = r.subs && r.subs.length;
     if(hasSubs){
@@ -383,8 +412,7 @@ function renderStats(name){
     li.appendChild(document.createTextNode(r.text));
     const w = document.createElement('span');
     w.className = 'when';
-    w.textContent = new Date(r.at).toLocaleString(undefined,
-      {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
+    w.textContent = new Date(r.at).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
     li.appendChild(w);
     if(hasSubs){
       const sub = document.createElement('ul');
