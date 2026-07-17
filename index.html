@@ -143,6 +143,10 @@
   #breadPreview{font-size:15px; font-weight:700; margin:4px 0 2px; word-break:break-word;}
   .hint{font-size:12.5px; color:#b8977a; margin-top:10px;}
   .hint a{color:var(--pink-dark);}
+  .pwwrap{position:relative;}
+  .pwwrap input{padding-right:42px;}
+  .pweye{position:absolute; right:8px; top:50%; transform:translateY(-50%);
+    background:none; border:none; cursor:pointer; font-size:16px; padding:2px;}
 
   /* ---------- crumpled paper (bin history) ---------- */
   .card.paper{border:3px dashed #cbb391; transform:rotate(-1.5deg);
@@ -209,6 +213,12 @@
   #stopMusic.on{display:block;}
   .preset{font-size:12.5px; padding:6px 12px;}
 
+  #binTip{position:fixed; z-index:70; background:#fff; border:3px solid var(--pink-dark);
+    border-radius:14px; padding:9px 14px; font-size:13px; font-weight:700; color:var(--brown);
+    max-width:230px; text-align:center; cursor:pointer; transform:translateX(-50%);
+    box-shadow:0 5px 0 rgba(120,90,70,.25); animation:popin .3s cubic-bezier(.3,1.6,.6,1);}
+  #binTip::after{content:''; position:absolute; bottom:-11px; left:50%; transform:translateX(-50%);
+    border:6px solid transparent; border-top-color:var(--pink-dark);}
   .floatplus{position:fixed; z-index:60; font-size:20px; font-weight:700; color:var(--pink-dark);
     animation:floatup 1s forwards; pointer-events:none;}
   @keyframes floatup{to{transform:translateY(-50px); opacity:0}}
@@ -424,12 +434,24 @@
       <div id="avPass" style="display:none">
         <input type="email" id="authEmail" placeholder="your email" autocomplete="email">
         <div style="height:8px"></div>
-        <input type="password" id="authPass" placeholder="password" autocomplete="current-password">
+        <div class="pwwrap">
+          <input type="password" id="authPass" placeholder="password" autocomplete="current-password">
+          <button type="button" class="pweye" data-for="authPass" title="show password">👁</button>
+        </div>
         <div class="row">
           <button class="btn ghost" id="backPass">← back</button>
           <button class="btn pink" id="btnLogin">log in</button>
           <button class="btn mint" id="btnSignup">sign up</button>
         </div>
+        <div class="hint"><a href="#" id="btnForgot">forgot your password?</a></div>
+      </div>
+      <div id="avReset" style="display:none">
+        <div style="font-size:14px; font-weight:700; margin-bottom:8px;">pick a new password 🔑</div>
+        <div class="pwwrap">
+          <input type="password" id="resetPass" placeholder="new password (6+ characters)" autocomplete="new-password">
+          <button type="button" class="pweye" data-for="resetPass" title="show password">👁</button>
+        </div>
+        <div class="row"><button class="btn pink" id="btnSetPass">set new password ♡</button></div>
       </div>
       <div id="avMagic" style="display:none">
         <input type="email" id="magicEmail" placeholder="your email" autocomplete="email">
@@ -493,6 +515,7 @@
         <button class="btn ghost" id="binClear">empty the bin 🧹</button>
         <button class="btn mint" id="binClose">okay ♡</button>
       </div>
+      <div class="hint">emptying the bin just tidies up — your pantry stats remember everything ♡</div>
     </div>
   </div>
 </div>
@@ -575,10 +598,11 @@ function saveLocal(){
 // ---- cloud persistence (Supabase) ----
 async function loadCloud(){
   const t = await sb.from('tasks').select('id,text,subs').order('created_at');
-  const h = await sb.from('toasts').select('text,toasted_at', {count:'exact'})
+  const h = await sb.from('toasts').select('text,toasted_at,subs', {count:'exact'})
     .order('toasted_at', {ascending:false}).limit(500);
   tasks = (t.data || []).map(r => ({id: r.id, text: r.text, subs: Array.isArray(r.subs) ? r.subs : []}));
-  history = (h.data || []).map(r => ({text: r.text, at: +new Date(r.toasted_at)}));
+  history = (h.data || []).map(r => ({text: r.text, at: +new Date(r.toasted_at),
+    subs: Array.isArray(r.subs) ? r.subs : []}));
   toastedCount = h.count ?? history.length;
 }
 async function enterCloud(u){
@@ -616,9 +640,14 @@ async function enterCloud(u){
 // ---- auth ----
 function authMsg(m){ $('#authMsg').textContent = m; }
 function authView(v){
-  ['avChoice','avPass','avMagic'].forEach(id => $('#'+id).style.display = id === v ? '' : 'none');
+  ['avChoice','avPass','avMagic','avReset'].forEach(id => $('#'+id).style.display = id === v ? '' : 'none');
   authMsg('');
 }
+document.querySelectorAll('.pweye').forEach(b => b.onclick = () => {
+  const i = $('#' + b.dataset.for);
+  i.type = i.type === 'password' ? 'text' : 'password';
+  b.textContent = i.type === 'password' ? '👁' : '🙈';
+});
 if(sb){
   const redirect = location.href.split('#')[0].split('?')[0];
   $('#chPass').onclick = () => authView('avPass');
@@ -645,6 +674,21 @@ if(sb){
     if(!email) return authMsg('type your email first, then the magic 🪄');
     const {error} = await sb.auth.signInWithOtp({email, options: {emailRedirectTo: redirect}});
     authMsg(error ? error.message.toLowerCase() + ' 🥲' : 'magic link sent — check your inbox 🪄💌');
+  };
+  $('#btnForgot').onclick = async e => {
+    e.preventDefault();
+    const email = $('#authEmail').value.trim();
+    if(!email) return authMsg('type your email above first, then click forgot 🥺');
+    const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo: redirect});
+    authMsg(error ? error.message.toLowerCase() + ' 🥲' : 'reset link sent — check your inbox 🔑💌');
+  };
+  $('#btnSetPass').onclick = async () => {
+    const p = $('#resetPass').value;
+    if(p.length < 6) return authMsg('6+ characters please 🥺');
+    const {error} = await sb.auth.updateUser({password: p});
+    if(error) return authMsg(error.message.toLowerCase() + ' 🥲');
+    authMsg('password updated — welcome back ♡');
+    setTimeout(() => $('#authModal').classList.remove('open'), 1200);
   };
 }
 $('#dashBtn').onclick = () => {
@@ -804,11 +848,12 @@ function runToast({t, el}){
   setTimeout(() => {
     toaster.classList.remove('toasting');
     $('#toasterLabel').classList.remove('show');
-    popToast(t.text);
+    popToast(t);
   }, 700 + 3000);
 }
 
-function popToast(text){
+function popToast(task){
+  const text = task.text;
   const tr = $('#toaster').getBoundingClientRect();
   const br = $('#bin').getBoundingClientRect();
   const mini = document.createElement('div');
@@ -827,17 +872,23 @@ function popToast(text){
     {transform:`translate(${dx}px,${dy}px) scale(.45) rotate(140deg)`, opacity:.85}
   ], {duration:1100, easing:'ease-in', fill:'forwards'});
 
-  setTimeout(() => $('#bin').classList.add('wobble'), 850);
+  setTimeout(() => { $('#bin').classList.add('wobble'); binSound(); }, 850);
   setTimeout(() => {
     mini.remove();
     $('#bin').classList.remove('wobble');
     toastedCount++;
-    history.unshift({text, at: Date.now()});
+    history.unshift({text, at: Date.now(), subs: task.subs || []});
     if(history.length > 500) history.length = 500;
-    if(cloud) sb.from('toasts').insert({user_id: user.id, text}).then(()=>{}, ()=>{});
+    if(cloud) sb.from('toasts').insert({user_id: user.id, text, subs: task.subs || []}).then(()=>{}, ()=>{});
     else saveLocal();
     updatePlacard();
     milestone();
+    try {
+      if(!localStorage.getItem('toast.bintip')){
+        localStorage.setItem('toast.bintip', '1');
+        showBinTip();
+      }
+    } catch(e) {}
     const p = document.createElement('div');
     p.className = 'floatplus'; p.textContent = '+1 ♡';
     const b = $('#bin').getBoundingClientRect();
@@ -846,6 +897,36 @@ function popToast(text){
     document.body.appendChild(p);
     setTimeout(() => p.remove(), 1000);
   }, 1150);
+}
+
+// ---- cute sound when toast lands in the bin ----
+function binSound(){
+  if(!prefOn('toast.sound')) return;
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = ac.currentTime;
+    [[523.25, 0], [783.99, 0.11]].forEach(([f, d]) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.001, t0 + d);
+      g.gain.exponentialRampToValueAtTime(0.16, t0 + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + d + 0.22);
+      o.connect(g); g.connect(ac.destination); o.start(t0 + d); o.stop(t0 + d + 0.25);
+    });
+  } catch(e) {}
+}
+
+// ---- one-time tip after the very first toast ----
+function showBinTip(){
+  const b = $('#bin').getBoundingClientRect();
+  const tip = document.createElement('div');
+  tip.id = 'binTip';
+  tip.textContent = "🍞 your first toast! click the bin to see everything you've finished";
+  tip.style.left = Math.min(b.left + b.width / 2, innerWidth - 125) + 'px';
+  tip.style.top = Math.max(10, b.top - 92) + 'px';
+  tip.onclick = () => tip.remove();
+  document.body.appendChild(tip);
+  setTimeout(() => tip.remove(), 8000);
 }
 
 // ---- feedback (after 3 toasts or pomodoros, shown once) ----
@@ -873,6 +954,8 @@ $('#fbSend').onclick = async () => {
 // ---- bin history ----
 $('#bin').style.cursor = 'pointer';
 let histFilter = 'today';
+let binClearedAt = 0;
+try { binClearedAt = +(localStorage.getItem('toast.bincleared') || 0); } catch(e) {}
 function renderHistory(){
   const now = new Date();
   const cuts = {
@@ -882,7 +965,8 @@ function renderHistory(){
     all: -1
   };
   const cut = cuts[histFilter];
-  const items = history.filter(h => cut < 0 || (h.at || 0) >= cut);
+  const items = history.filter(h =>
+    (h.at || 0) > binClearedAt && (cut < 0 || (h.at || 0) >= cut));
   const label = {today:'today', week:'this week', month:'this month', all:'all time'}[histFilter];
   $('#histCount').textContent = `${items.length} task${items.length === 1 ? '' : 's'} toasted ${label} ♡`;
   const ul = $('#historyList');
@@ -911,10 +995,9 @@ $('#bin').onclick = openBin;
 $('#placard').onclick = openBin;
 $('#binClose').onclick = () => $('#binModal').classList.remove('open');
 $('#binClear').onclick = () => {
-  history = []; toastedCount = 0;
-  if(cloud) sb.from('toasts').delete().eq('user_id', user.id).then(()=>{}, ()=>{});
-  else saveLocal();
-  updatePlacard();
+  // clears only this bin's view — analytics in the pantry keep everything
+  binClearedAt = Date.now();
+  try { localStorage.setItem('toast.bincleared', binClearedAt); } catch(e) {}
   renderHistory();
 };
 
@@ -1088,7 +1171,12 @@ setInterval(updateSky, 60000);
   if(!sb) return; // no Supabase configured → localStorage mode
   const {data:{session}} = await sb.auth.getSession();
   if(session) enterCloud(session.user);
-  sb.auth.onAuthStateChange((_e, s) => { if(s && !cloud) enterCloud(s.user); });
+  sb.auth.onAuthStateChange((ev, s) => {
+    if(s && !cloud) enterCloud(s.user);
+    if(ev === 'PASSWORD_RECOVERY'){
+      setTimeout(() => { authView('avReset'); $('#authModal').classList.add('open'); }, 400);
+    }
+  });
 })();
 </script>
 </body>

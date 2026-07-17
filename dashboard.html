@@ -74,10 +74,17 @@
   .bar .val{font-size:13px; color:var(--brown); font-weight:700; margin-bottom:26px;}
   .bar.today .fill{background:var(--pink); border-color:var(--pink-dark);}
 
-  #recent li{list-style:none; font-size:13.5px; font-weight:700; padding:7px 4px;
+  #recent > li{list-style:none; font-size:13.5px; font-weight:700; padding:7px 4px;
     border-bottom:1.5px dashed #e5d2bb;}
-  #recent li:last-child{border-bottom:none;}
-  #recent li::before{content:'🍞 ';}
+  #recent > li:last-child{border-bottom:none;}
+  #recent > li::before{content:'🍞 ';}
+  #recent > li.hasSubs{cursor:pointer;}
+  .caret{display:inline-block; font-size:10px; margin-right:4px; transition:transform .15s; color:var(--soft);}
+  li.open .caret{transform:rotate(90deg);}
+  .sublist{list-style:none; margin:5px 0 2px 26px; padding:0; display:none;}
+  li.open .sublist{display:block;}
+  .sublist li{font-size:12px; font-weight:500; color:var(--soft); padding:3px 0; border:none;}
+  .sublist li.sdone{text-decoration:line-through; opacity:.65;}
   .when{float:right; font-weight:500; font-size:11px; color:#c4a983;}
 
   .mocknote{font-size:11.5px; color:var(--soft); text-align:center; margin-top:6px; display:none;}
@@ -333,8 +340,10 @@ function renderStats(name){
   $('#stStreak').textContent = streak ? streak + ' 🔥' : '0';
   $('#stAvg').textContent = avg;
 
-  const hrs = (week * 25 / 60).toFixed(1);
-  $('#hoursBig').textContent = `you've baked back ${hrs} hours this week ♡`;
+  const hs = hoursSaved(week);
+  $('#hoursBig').textContent = hs.big;
+  cuteLines = hs.lines; cuteIdx = 0;
+  $('#cuteLine').textContent = cuteLines[0];
 
   // 7-day chart
   const chart = $('#chart');
@@ -359,32 +368,96 @@ function renderStats(name){
     chart.appendChild(bar);
   });
 
-  // recent list
+  // recent list (with subtask dropdowns)
   const ul = $('#recent');
   ul.innerHTML = '';
   rows.slice(0, 8).forEach(r => {
     const li = document.createElement('li');
-    li.textContent = r.text;
+    const hasSubs = r.subs && r.subs.length;
+    if(hasSubs){
+      li.className = 'hasSubs';
+      const c = document.createElement('span');
+      c.className = 'caret'; c.textContent = '▶';
+      li.appendChild(c);
+    }
+    li.appendChild(document.createTextNode(r.text));
     const w = document.createElement('span');
     w.className = 'when';
     w.textContent = new Date(r.at).toLocaleString(undefined,
       {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
     li.appendChild(w);
+    if(hasSubs){
+      const sub = document.createElement('ul');
+      sub.className = 'sublist';
+      r.subs.forEach(s => {
+        const sl = document.createElement('li');
+        if(s.done) sl.className = 'sdone';
+        sl.textContent = (s.done ? '✓ ' : '○ ') + s.text;
+        sub.appendChild(sl);
+      });
+      li.appendChild(sub);
+      li.onclick = () => li.classList.toggle('open');
+    }
     ul.appendChild(li);
   });
   $('#emptyRecent').style.display = rows.length ? 'none' : 'block';
 }
 
-// rotating cute equivalences
-const lines = [
-  'that\'s a whole book you could read 📖',
-  'that\'s 4 movies with popcorn 🍿',
-  'that\'s 9 slow morning coffees ☕',
-  'that\'s a full night of extra sleep 😴',
-  'that\'s hours back for your hobby 🎨'
-];
-let li_ = 0;
-setInterval(() => { li_ = (li_ + 1) % lines.length; $('#cuteLine').textContent = lines[li_]; }, 3500);
+// hours-saved copy that actually matches the number (25 min per toasted task)
+function hoursSaved(week){
+  const mins = week * 25;
+  const h = (mins / 60).toFixed(1).replace('.0', '');
+  if(mins <= 0) return {
+    big: 'no time baked back yet this week',
+    lines: ['toast a task and the savings begin 🍞']
+  };
+  if(mins < 60) return {
+    big: `you've baked back ${mins} minutes this week ♡`,
+    lines: [
+      `that's ${mins} unhurried minutes with your coffee ☕`,
+      `that's ${mins} minutes for a stretch and a snack 🍪`,
+      `that's ${mins} minutes of doodling time 🎨`
+    ]
+  };
+  if(mins < 120) return {
+    big: `you've baked back ${h} hour${h === '1' ? '' : 's'} this week ♡`,
+    lines: [
+      "that's an episode of your comfort show 📺",
+      "that's one long golden-hour walk 🚶‍♀️",
+      "that's a whole hour for your hobby 🎨"
+    ]
+  };
+  if(mins < 240) return {
+    big: `you've baked back ${h} hours this week ♡`,
+    lines: [
+      "that's a whole movie with popcorn 🍿",
+      "that's a lazy weekend brunch 🥞",
+      "that's a few good chapters of a book 📖"
+    ]
+  };
+  if(mins < 480) return {
+    big: `you've baked back ${h} hours this week ♡`,
+    lines: [
+      "that's a full night of extra sleep 😴",
+      "that's half a book you could read 📖",
+      "that's a whole afternoon for your hobby 🎨"
+    ]
+  };
+  return {
+    big: `you've baked back ${h} hours this week ♡`,
+    lines: [
+      "that's an entire book, cover to cover 📖",
+      "that's a movie marathon with snacks 🍿",
+      "that's a whole weekend morning routine, reclaimed 🥞"
+    ]
+  };
+}
+let cuteLines = ['toast a task and the savings begin 🍞'], cuteIdx = 0;
+setInterval(() => {
+  if(cuteLines.length < 2) return;
+  cuteIdx = (cuteIdx + 1) % cuteLines.length;
+  $('#cuteLine').textContent = cuteLines[cuteIdx];
+}, 3500);
 
 // ---------- settings ----------
 function initToggles(){
@@ -453,9 +526,10 @@ $('#deleteBtn').onclick = async () => {
 
   const [prof, toasts] = await Promise.all([
     sb.from('profiles').select('name,avatar').eq('id', user.id).maybeSingle(),
-    sb.from('toasts').select('text,toasted_at').order('toasted_at', {ascending:false}).limit(2000)
+    sb.from('toasts').select('text,toasted_at,subs').order('toasted_at', {ascending:false}).limit(2000)
   ]);
-  rows = (toasts.data || []).map(r => ({text: r.text, at: +new Date(r.toasted_at)}));
+  rows = (toasts.data || []).map(r => ({text: r.text, at: +new Date(r.toasted_at),
+    subs: Array.isArray(r.subs) ? r.subs : []}));
   const name = (prof.data && prof.data.name) || (user.email || '').split('@')[0];
   $('#setName').value = (prof.data && prof.data.name) || '';
   if(prof.data && prof.data.avatar) setAvatar(prof.data.avatar);
